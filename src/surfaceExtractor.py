@@ -1,6 +1,6 @@
 """
 -------------------------------------------------------------------------------
-  ***    *     *  ******   *******  ******    *****     ***    *     *  ******   
+    ***    *     *  ******   *******  ******    *****     ***    *     *  ******   
  *   *   **   **  *     *  *        *     *  *     *   *   *   **    *  *     *  
 *     *  * * * *  *     *  *        *     *  *        *     *  * *   *  *     *  
 *******  *  *  *  ******   ****     ******    *****   *******  *  *  *  *     *  
@@ -17,36 +17,37 @@
  */
 """
 
-import yaml
+from typing import Literal
 from primitives import ampersandPrimitives
-from constants import meshSettings
+from constants import MeshSettings
+from src.utils.headers import createFoamHeader
 
-def create_surfaceFeatureExtractDict(meshSettings):
-    header = ampersandPrimitives.createFoamHeader(className="dictionary", objectName="surfaceFeatureExtractDict")
-    surfaceFeatureExtractDict = f""+header
-    for anEntry in meshSettings['geometry']:
-        if anEntry['type'] == 'triSurfaceMesh':
-            surfaceFeature = f"""\n{anEntry['name']}
+
+def create_surfaceDict(meshSettings: MeshSettings, objectName: Literal["surfaceFeatureExtractDict", "surfaceFeaturesDict"]) -> str:
+    header = createFoamHeader(className="dictionary", objectName=objectName)
+    surfaceDict = header
+    for anEntry in meshSettings.geometry:
+        if anEntry.type == 'triSurfaceMesh':
+            surfaceFeature = f"""\n{anEntry.name}
 {{
-    extractionMethod    extractFromSurface; 
-    includedAngle   170;
-    subsetFeatures
-    {{
-        nonManifoldEdges       no;
-        openEdges       yes;
-    }}
-    writeObj            yes;
-    writeSets           no;
+extractionMethod    extractFromSurface;
+includedAngle   170;
+subsetFeatures
+{{
+    nonManifoldEdges       no;
+    openEdges       yes;
+}}
+writeObj            yes;
+writeSets           no;
 }}"""
-            surfaceFeatureExtractDict += surfaceFeature
-    
-
-    return surfaceFeatureExtractDict
+            surfaceDict += surfaceFeature
+    return surfaceDict
 
 
 if __name__ == "__main__":
-    meshSettings = ampersandPrimitives.yaml_to_dict('meshSettings.yaml')
-    surfaceFeatureExtractDict = create_surfaceFeatureExtractDict(meshSettings)
-    #print(surfaceFeatureExtractDict)
+    meshSettings = MeshSettings.model_validate(
+        ampersandPrimitives.yaml_to_dict('meshSettings.yaml'))
+    surfaceFeatureExtractDict = create_surfaceDict(
+        meshSettings, "surfaceFeatureExtractDict")
     with open('surfaceFeatureExtractDict', 'w') as file:
         file.write(surfaceFeatureExtractDict)

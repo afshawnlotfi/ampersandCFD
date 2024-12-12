@@ -17,8 +17,10 @@
  */
 """
 
-from primitives import ampersandPrimitives, ampersandIO
-from constants import meshSettings, postProcessSettings
+from typing import Literal, Union
+from primitives import ampersandIO
+from src.constants import MeshSettings, PostProcessSettings
+
 
 class postProcess:
     def __init__(self):
@@ -32,10 +34,10 @@ cd "${{0%/*}}" || exit                                # Run from this directory
 #-----------------------------------------------------
 """
         cmdPostProcess += f"""
-runApplication postProcess 
+runApplication postProcess
 """
         return cmdPostProcess
-    
+
     @staticmethod
     # function object for showing minimum and maximum values of the fields
     def FO_min_max():
@@ -53,7 +55,7 @@ minMax
     );
 }}"""
         return FO
-    
+
     @staticmethod
     def FO_yPlus():
         FO = f"""
@@ -63,15 +65,15 @@ yPlus1
     type            yPlus;
     libs            (fieldFunctionObjects);
     writeControl    outputTime;
-	writeInterval   1;
-	writeFields     true;
+        writeInterval   1;
+        writeFields     true;
     log             true;
 }}
 """
         return FO
-    
+
     @staticmethod
-    def FO_forces(patchName="patchName",rhoInf=1,CofR=(0,0,0),pitchAxis=(0,1,0)):
+    def FO_forces(patchName="patchName", rhoInf=1, CofR=(0, 0, 0), pitchAxis=(0, 1, 0)):
         FO = f"""
 forces
 {{
@@ -87,7 +89,7 @@ forces
 }}
 """
         return FO
-    
+
     @staticmethod
     def FO_massFlow(patchName="patchName"):
         FO = f"""
@@ -109,9 +111,9 @@ forces
 }}
 """
         return FO
-    
+
     @staticmethod
-    def FO_probes(probeName="probeName",probeLocations=[[0,0,0]]):
+    def FO_probes(probeName="probeName", probeLocations=[[0, 0, 0]]):
         FO = f"""
 {probeName}
 {{
@@ -125,7 +127,8 @@ forces
     (
 """
         for probeLocation in probeLocations:
-            FO += f"        ({probeLocation[0]} {probeLocation[1]} {probeLocation[2]})\n"
+            FO += f"        ({probeLocation[0]
+                              } {probeLocation[1]} {probeLocation[2]})\n"
         FO += f"""    );
     fields
     (
@@ -136,8 +139,9 @@ forces
 """
         return FO
     
+    # TODO: this is problematic if it is start or end
     @staticmethod
-    def FO_streamLines(start="start",end="end",nPoints=100):
+    def FO_streamLines(start: Union[tuple, Literal["start"]] = "start", end: Union[tuple, Literal["end"]] = "end", nPoints=100):
         FO = f"""
 streamLines
 {{
@@ -150,42 +154,46 @@ streamLines
 }}
 """
         return FO
-    
+
     @staticmethod
     def get_probe_location():
-        probeLocation = ampersandIO.get_input_vector("Enter probe location (x y z): ")
+        probeLocation = ampersandIO.get_input_vector(
+            "Enter probe location (x y z): ")
         return probeLocation
-    
+
     @staticmethod
-    def get_mass_flow_rate_FO(meshSettings):
+    def get_mass_flow_rate_FO(meshSettings: MeshSettings):
         massFlowFO = ""
         # for internal flow problems, get all patches
-        if(meshSettings['internalFlow']):
-            for patch in meshSettings['geometry']:
-                if(patch['purpose'] == "inlet" or patch['purpose'] == "outlet"):
-                    massFlowFO += postProcess.FO_massFlow(patchName=patch['name'][:-4])
-                    #massFlowFO += postProcess.FO_massFlow(patchName=patch)
+        if (meshSettings.internalFlow):
+            for patch in meshSettings.geometry:
+                if (patch.purpose == "inlet" or patch.purpose == "outlet"):
+                    massFlowFO += postProcess.FO_massFlow(
+                        patchName=patch.name[:-4])
+                    # massFlowFO += postProcess.FO_massFlow(patchName=patch)
         else:
             # for external flow problems, there are only inlet and outlet patches
             massFlowFO += postProcess.FO_massFlow(patchName="inlet")
             massFlowFO += postProcess.FO_massFlow(patchName="outlet")
         return massFlowFO
-    
+
     @staticmethod
-    def create_FOs(meshSettings,postProcessSettings,useFOs=True):
-        if(not useFOs):
+    def create_FOs(meshSettings: MeshSettings, postProcessSettings: PostProcessSettings, useFOs=True):
+        if (not useFOs):
             return "// No function objects are used"
         FOs = ""
-        if(postProcessSettings['minMax']):
+        if (postProcessSettings.minMax):
             FOs += postProcess.FO_min_max()
-        if(postProcessSettings['yPlus']):
+        if (postProcessSettings.yPlus):
             FOs += postProcess.FO_yPlus()
-        if(postProcessSettings['forces']):
-            FOs += postProcess.FO_forces(patchName="wall",rhoInf=1,CofR=(0,0,0),pitchAxis=(0,1,0))
-        if(postProcessSettings['massFlow']):
+        if (postProcessSettings.forces):
+            FOs += postProcess.FO_forces(patchName="wall",
+                                         rhoInf=1, CofR=(0, 0, 0), pitchAxis=(0, 1, 0))
+        if (postProcessSettings.massFlow):
             FOs += postProcess.get_mass_flow_rate_FO(meshSettings)
-        if(len(postProcessSettings['probeLocations'])>0):
-            FOs += postProcess.FO_probes(probeName="probe",probeLocations=postProcessSettings['probeLocations'])
-        #if(postProcessSettings['streamLines']):
+        if (len(postProcessSettings.probeLocations) > 0):
+            FOs += postProcess.FO_probes(probeName="probe",
+                                         probeLocations=postProcessSettings.probeLocations)
+        # if(postProcessSettings.streamLines):
         #    FOs += postProcess.FO_streamLines(start=(0,0,0),end=(0,0,1),nPoints=100)
         return FOs

@@ -22,11 +22,11 @@ import numpy as np
 import time
 from project import ampersandProject
 from primitives import ampersandPrimitives, ampersandIO
-from headers import get_ampersand_header
+from src.utils.headers import get_ampersand_header
 import os
 
 # this code is to watch the simulation convergence
-def watch_residuals(logfile):
+def watch_residuals(logfile: str):
     # read the log file
     with open(logfile) as f:
         lines = f.readlines()

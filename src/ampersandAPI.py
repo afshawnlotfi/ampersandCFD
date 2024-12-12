@@ -25,7 +25,7 @@
 
 from project import ampersandProject
 from primitives import ampersandPrimitives, ampersandIO
-from headers import get_ampersand_header
+from src.utils.headers import get_ampersand_header
 import os
 
 def open_project(project_path):

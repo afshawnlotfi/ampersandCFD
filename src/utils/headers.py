@@ -17,6 +17,9 @@
  */
 """
 
+from src.primitives import ampersandPrimitives
+
+
 letters = {
     'a': [
         "  ***  ",
@@ -277,8 +280,15 @@ def get_ampersand_header():
     return output
 
 
+def tuple_to_string(t):
+    return f"({t[0]} {t[1]} {t[2]})"
+
+
+
 if __name__ == '__main__':
     output = "-------------------------------------------------------------------------------\n"
     output += get_ampersand_header()
     output += "-------------------------------------------------------------------------------\n"
     print(output)
+
+

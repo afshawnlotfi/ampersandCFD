@@ -5,7 +5,7 @@ from PySide6.QtCore import QFile
 from PySide6.QtWidgets import QMainWindow
 from PySide6 import QtWidgets
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
-from dialogBoxes import sphereDialogDriver, yesNoDialogDriver, yesNoCancelDialogDriver
+from src.gui.dialogBoxes import sphereDialogDriver, yesNoDialogDriver, yesNoCancelDialogDriver
 # ----------------- VTK Libraries ----------------- #
 import vtk
 import vtkmodules.vtkInteractionStyle
@@ -32,22 +32,6 @@ from primitives import ampersandPrimitives, ampersandIO
 
 
 loader = QUiLoader()
-
-# This function reads STL file and extracts the surface patch names.
-def readSTL(stlFileName="cylinder.stl"):
-    surfaces = [] # to store the surfaces in the STL file
-    try:
-        f = open(stlFileName, "r")
-        for x in f:
-            
-            items = x.split(" ")
-            if(items[0]=='solid'):
-                surfaces.append(items[1][:-1])
-                #print(items[1][:-1])
-        f.close()
-    except:
-        print("Error while opening file: ",stlFileName)
-    return surfaces
 
 
 # This is the main window class
@@ -131,7 +115,7 @@ class mainWindow(QMainWindow):
         self.window.lineEdit_nZ.setEnabled(True)
 
     def load_ui(self):
-        ui_file = QFile("ampersandInputForm.ui")
+        ui_file = QFile("src/gui/templates/ampersandInputForm.ui")
         ui_file.open(QFile.ReadOnly)
         self.window = loader.load(ui_file, None)
         ui_file.close()
@@ -336,7 +320,7 @@ class mainWindow(QMainWindow):
     def update_list(self):
         self.window.listWidgetObjList.clear()
         for i in range(len(self.project.stl_files)):
-            self.window.listWidgetObjList.insertItem(i,self.project.stl_files[i]['name'])
+            self.window.listWidgetObjList.insertItem(i,self.project.stl_files[i].name)
 
 
     def updatePropertyBox(self):
@@ -408,7 +392,7 @@ class mainWindow(QMainWindow):
     def chooseInternalFlow(self):
         #print("Choose Internal Flow")
         self.project.internalFlow = True
-        self.project.meshSettings['internalFlow'] = True
+        self.project.meshSettings.internalFlow = True
         self.window.checkBoxOnGround.setEnabled(False)
         self.updateStatusBar("Choosing Internal Flow")
         sleep(0.001)
@@ -416,9 +400,9 @@ class mainWindow(QMainWindow):
 
     def chooseExternalFlow(self):
         self.project.internalFlow = False
-        self.project.meshSettings['internalFlow'] = False
+        self.project.meshSettings.internalFlow = False
         self.window.checkBoxOnGround.setEnabled(True)
-        self.project.meshSettings['onGround'] = self.window.checkBoxOnGround.isChecked()
+        self.project.meshSettings.onGround = self.window.checkBoxOnGround.isChecked()
         self.project.onGround = self.window.checkBoxOnGround.isChecked()
         self.updateStatusBar("Choosing External Flow")
         sleep(0.001)
@@ -554,19 +538,19 @@ class mainWindow(QMainWindow):
         #self.project.adjust_domain_size()
         #if self.project.internalFlow==False:
         onGround = self.window.checkBoxOnGround.isChecked()
-        self.project.meshSettings['onGround'] = onGround
+        self.project.meshSettings.onGround = onGround
         self.project.onGround = onGround
         self.project.analyze_stl_file()
         print("On Ground: ",onGround)
-        minx = self.project.meshSettings['domain']['minx']
-        miny = self.project.meshSettings['domain']['miny']
-        minz = self.project.meshSettings['domain']['minz']
-        maxx = self.project.meshSettings['domain']['maxx']
-        maxy = self.project.meshSettings['domain']['maxy']
-        maxz = self.project.meshSettings['domain']['maxz']
-        nx = self.project.meshSettings['domain']['nx']
-        ny = self.project.meshSettings['domain']['ny']
-        nz = self.project.meshSettings['domain']['nz']
+        minx = self.project.meshSettings.domain.minx
+        miny = self.project.meshSettings.domain.miny
+        minz = self.project.meshSettings.domain.minz
+        maxx = self.project.meshSettings.domain.maxx
+        maxy = self.project.meshSettings.domain.maxy
+        maxz = self.project.meshSettings.domain.maxz
+        nx = self.project.meshSettings.domain.nx
+        ny = self.project.meshSettings.domain.ny
+        nz = self.project.meshSettings.domain.nz
         self.window.lineEditMinX.setText(f"{minx:.2f}")
         self.window.lineEditMinY.setText(f"{miny:.2f}")
         self.window.lineEditMinZ.setText(f"{minz:.2f}")
@@ -596,15 +580,15 @@ class mainWindow(QMainWindow):
             ampersandIO.printError("Invalid Domain Size",GUIMode=True)
             self.readyStatusBar()
             return
-        self.project.meshSettings['domain']['minx'] = minx
-        self.project.meshSettings['domain']['miny'] = miny
-        self.project.meshSettings['domain']['minz'] = minz
-        self.project.meshSettings['domain']['maxx'] = maxx
-        self.project.meshSettings['domain']['maxy'] = maxy
-        self.project.meshSettings['domain']['maxz'] = maxz
-        self.project.meshSettings['domain']['nx'] = nx
-        self.project.meshSettings['domain']['ny'] = ny
-        self.project.meshSettings['domain']['nz'] = nz
+        self.project.meshSettings.domain.minx = minx
+        self.project.meshSettings.domain.miny = miny
+        self.project.meshSettings.domain.minz = minz
+        self.project.meshSettings.domain.maxx = maxx
+        self.project.meshSettings.domain.maxy = maxy
+        self.project.meshSettings.domain.maxz = maxz
+        self.project.meshSettings.domain.nx = nx
+        self.project.meshSettings.domain.ny = ny
+        self.project.meshSettings.domain.nz = nz
         self.updateStatusBar("Manual Domain Set")
         self.add_box_to_VTK(minX=minx,minY=miny,minZ=minz,maxX=maxx,maxY=maxy,maxZ=maxz,boxName="Domain")
         self.readyStatusBar()

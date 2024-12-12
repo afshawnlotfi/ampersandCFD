@@ -20,18 +20,19 @@
 import os
 import sys
 
+from src.constants import SimulationFlowSettings
+
+
 class ScriptGenerator:
-    def __init__(self):
-        pass
 
     @staticmethod
-    def generate_mesh_script(simulationFlowSettings):
+    def create_mesh_script(simulationFlowSettings: SimulationFlowSettings):
         cmdMesh = f"""#!/bin/sh
 cd "${{0%/*}}" || exit                                # Run from this directory
 . ${{WM_PROJECT_DIR:?}}/bin/tools/RunFunctions        # Tutorial run functions
 #-----------------------------------------------------
 """
-        if(simulationFlowSettings['parallel']):
+        if (simulationFlowSettings.parallel):
             cmdMesh += f"""
 foamCleanTutorials
 #cp -r 0 0.orig
@@ -57,13 +58,13 @@ runApplication snappyHexMesh -overwrite
 
     # Generate run script for incompressible flow simulations (simpleFoam, pimpleFoam, etc.)
     @staticmethod
-    def generate_simulation_script(simulationFlowSettings):
+    def create_simulation_script(simulationFlowSettings: SimulationFlowSettings):
         cmdSimulation = f"""#!/bin/sh
 cd "${{0%/*}}" || exit                                # Run from this directory
 . ${{WM_PROJECT_DIR:?}}/bin/tools/RunFunctions        # Tutorial run functions
 #-----------------------------------------------------
 """
-        if(simulationFlowSettings['parallel']):
+        if (simulationFlowSettings.parallel):
             cmdSimulation += f"""
 #rm -rf 0
 #cp -r 0.orig 0
@@ -72,25 +73,25 @@ runApplication decomposePar -force
 touch case.foam
 runParallel renumberMesh -overwrite
 """
-            if(simulationFlowSettings['potentialFoam']):
+            if (simulationFlowSettings.potentialFoam):
                 cmdSimulation += f"""
 runParallel potentialFoam
-runParallel {simulationFlowSettings['solver']}
+runParallel {simulationFlowSettings.solver}
 """
             else:
                 cmdSimulation += f"""
-runParallel {simulationFlowSettings['solver']}
+runParallel {simulationFlowSettings.solver}
 """
-            
+
         else:
-            if simulationFlowSettings['potentialFoam']:
+            if simulationFlowSettings.potentialFoam:
                 cmdSimulation += f"""
 runApplication potentialFoam
-runApplication {simulationFlowSettings['solver']}
+runApplication {simulationFlowSettings.solver}
 """
             else:
-                cmdSimulation += f"""   
-runApplication {simulationFlowSettings['solver']}
+                cmdSimulation += f"""
+runApplication {simulationFlowSettings.solver}
 """
         return cmdSimulation
 
@@ -102,14 +103,12 @@ cd "${{0%/*}}" || exit                                # Run from this directory
 . ${{WM_PROJECT_DIR:?}}/bin/tools/RunFunctions        # Tutorial run functions
 #-----------------------------------------------------
 """
-        if(simulationFlowSettings['parallel']):
+        if (simulationFlowSettings.parallel):
             cmdPostProcessing += f"""
-runParallel {simulationFlowSettings['solver']} -postProcess
+runParallel {simulationFlowSettings.solver} -postProcess
 """
         else:
             cmdPostProcessing += f"""
-runApplication {simulationFlowSettings['solver']} -postProcess
+runApplication {simulationFlowSettings.solver} -postProcess
 """
         return cmdPostProcessing
-    
-    

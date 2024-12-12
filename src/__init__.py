@@ -1,8 +1,6 @@
 import os
 import glob
 
-# /c:/Users/Ridwa/Desktop/CFD/01_CFD_Software_Development/ampersandCFD/ampersandCFD/src/__init__.py
-
 
 # Automatically import all Python files in the current directory
 modules = glob.glob(os.path.join(os.path.dirname(__file__), "*.py"))

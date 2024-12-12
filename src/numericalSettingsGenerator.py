@@ -17,178 +17,184 @@
  */
 """
 
-from constants import numericalSettings, solverSettings
-from primitives import ampersandPrimitives
+from src.constants import NumericalSettings, SolverSettings
+from src.utils.dict_generation import DictGenerationUtils
 
-def create_algorithmDict(numericalSettings):
-    #header = ampersandPrimitives.createFoamHeader(className="dictionary", objectName="pimpleDict")
+
+def create_algorithmDict(numericalSettings: NumericalSettings):
+    # header = DictGenerationUtils.createFoamHeader(className="dictionary", objectName="pimpleDict")
     algorithmDict = f""
     algorithmDict += f"""
 PIMPLE
 {{
-    nOuterCorrectors {numericalSettings['pimpleDict']['nOuterCorrectors']};
-    nCorrectors {numericalSettings['pimpleDict']['nCorrectors']};
-    nNonOrthogonalCorrectors {numericalSettings['pimpleDict']['nNonOrthogonalCorrectors']};
-    pRefCell {numericalSettings['pimpleDict']['pRefCell']};
-    pRefValue {numericalSettings['pimpleDict']['pRefValue']};
+    nOuterCorrectors {numericalSettings.pimpleDict.nOuterCorrectors};
+    nCorrectors {numericalSettings.pimpleDict.nCorrectors};
+    nNonOrthogonalCorrectors {numericalSettings.pimpleDict.nNonOrthogonalCorrectors};
+    pRefCell {numericalSettings.pimpleDict.pRefCell};
+    pRefValue {numericalSettings.pimpleDict.pRefValue};
     residualControl
     {{
-        "(U|k|omega|epsilon|nut)" 
+        "(U|k|omega|epsilon|nut)"
         {{
-            tolerance {numericalSettings['pimpleDict']['residualControl']['U']};
+            tolerance {numericalSettings.pimpleDict.residualControl.U};
             relTol 0;
         }}
         p
         {{
-            tolerance {numericalSettings['pimpleDict']['residualControl']['p']};
+            tolerance {numericalSettings.pimpleDict.residualControl.p};
             relTol 0;
         }}
     }}
 }}
 SIMPLE
 {{
-    nNonOrthogonalCorrectors {numericalSettings['simpleDict']['nNonOrthogonalCorrectors']};
-    consistent {numericalSettings['simpleDict']['consistent']};
+    nNonOrthogonalCorrectors {numericalSettings.simpleDict.nNonOrthogonalCorrectors};
+    consistent {numericalSettings.simpleDict.consistent};
     residualControl
     {{
-        U {numericalSettings['simpleDict']['residualControl']['U']};
-        p {numericalSettings['simpleDict']['residualControl']['p']};
-        k {numericalSettings['simpleDict']['residualControl']['k']};
-        omega {numericalSettings['simpleDict']['residualControl']['omega']};
-        epsilon {numericalSettings['simpleDict']['residualControl']['epsilon']};
-        nut {numericalSettings['simpleDict']['residualControl']['nut']};
+        U {numericalSettings.simpleDict.residualControl.U};
+        p {numericalSettings.simpleDict.residualControl.p};
+        k {numericalSettings.simpleDict.residualControl.k};
+        omega {numericalSettings.simpleDict.residualControl.omega};
+        epsilon {numericalSettings.simpleDict.residualControl.epsilon};
+        nut {numericalSettings.simpleDict.residualControl.nut};
     }}
 }}
 potentialFlow
 {{
-    nNonOrthogonalCorrectors {numericalSettings['potentialFlowDict']['nonOrthogonalCorrectors']};
+    nNonOrthogonalCorrectors {numericalSettings.potentialFlowDict.nonOrthogonalCorrectors};
 }}
 relaxationFactors
 {{
     equations
     {{
-        U {numericalSettings['relaxationFactors']['U']};
-        
-        k {numericalSettings['relaxationFactors']['k']};
-        omega {numericalSettings['relaxationFactors']['omega']};
-        epsilon {numericalSettings['relaxationFactors']['epsilon']};
-        nut {numericalSettings['relaxationFactors']['nut']};
+        U {numericalSettings.relaxationFactors.U};
+
+        k {numericalSettings.relaxationFactors.k};
+        omega {numericalSettings.relaxationFactors.omega};
+        epsilon {numericalSettings.relaxationFactors.epsilon};
+        nut {numericalSettings.relaxationFactors.nut};
     }}
     fields
     {{
-        p {numericalSettings['relaxationFactors']['p']};
+        p {numericalSettings.relaxationFactors.p};
     }}
 }}
 """
     return algorithmDict
 
-def create_solverDict(solverSettings,solverName="U"):
-    
+
+def create_solverDict(solverSettings: SolverSettings, solverName="U"):
+
     solverDict = f""
-    if(solverName=="p" or solverName=="Phi" or solverName=="p_rgh"):
+    if (solverName == "p" or solverName == "Phi" or solverName == "p_rgh"):
         solverDict += f"""
 {solverName}
 {{
-    solver {solverSettings[solverName]['type']};
-    smoother {solverSettings[solverName]['smoother']};
-    
-    agglomerator {solverSettings[solverName]['agglomerator']};
-    nCellsInCoarsestLevel {solverSettings[solverName]['nCellsInCoarsestLevel']};
-    mergeLevels {solverSettings[solverName]['mergeLevels']};
-    cacheAgglomeration {solverSettings[solverName]['cacheAgglomeration']};
-    tolerance {solverSettings[solverName]['tolerance']};
-    relTol {solverSettings[solverName]['relTol']};
-    maxIter {solverSettings[solverName]['maxIter']};
-    nSweeps {solverSettings[solverName]['nSweeps']};
-    nPreSweeps {solverSettings[solverName]['nPreSweeps']};
+    solver {solverSettings[solverName].type};
+    smoother {solverSettings[solverName].smoother};
+
+    agglomerator {solverSettings[solverName].agglomerator};
+    nCellsInCoarsestLevel {solverSettings[solverName].nCellsInCoarsestLevel};
+    mergeLevels {solverSettings[solverName].mergeLevels};
+    cacheAgglomeration {solverSettings[solverName].cacheAgglomeration};
+    tolerance {solverSettings[solverName].tolerance};
+    relTol {solverSettings[solverName].relTol};
+    maxIter {solverSettings[solverName].maxIter};
+    nSweeps {solverSettings[solverName].nSweeps};
+    nPreSweeps {solverSettings[solverName].nPreSweeps};
 }}
 """
     else:
         solverDict += f"""
 {solverName}
 {{
-    solver {solverSettings[solverName]['type']};
-    smoother {solverSettings[solverName]['smoother']};
-    tolerance {solverSettings[solverName]['tolerance']};
-    relTol {solverSettings[solverName]['relTol']};
+    solver {solverSettings[solverName].type};
+    smoother {solverSettings[solverName].smoother};
+    tolerance {solverSettings[solverName].tolerance};
+    relTol {solverSettings[solverName].relTol};
     maxIter 100;
 }}
 """
     return solverDict
 
-def create_solverFinalDict(solverSettings,solverName="U"):
-    
+
+def create_solverFinalDict(solverSettings: SolverSettings, solverName="U"):
+
     solverDict = f""
     solverDict += f"""
     {solverName}Final
     {{
         ${solverName}
-        tolerance {solverSettings[solverName]['tolerance']/100.};
-        relTol 0;  
+        tolerance {solverSettings[solverName].tolerance/100.};
+        relTol 0;
     }}
     """
     return solverDict
 
-def create_fvSolutionDict(numericalSettings,solverSettings):
-    header = ampersandPrimitives.createFoamHeader(className="dictionary", objectName="fvSolution")
+
+def create_fvSolutionDict(numericalSettings: NumericalSettings, solverSettings: SolverSettings):
+    header = DictGenerationUtils.createFoamHeader(
+        className="dictionary", objectName="fvSolution")
     fvSolutionDict = f""+header
     fvSolutionDict += f"""
 solvers
 {{
     """
     for solver in solverSettings.keys():
-        fvSolutionDict += create_solverDict(solverSettings,solver)
-        fvSolutionDict += create_solverFinalDict(solverSettings,solver)
+        fvSolutionDict += create_solverDict(solverSettings, solver)
+        fvSolutionDict += create_solverFinalDict(solverSettings, solver)
     fvSolutionDict += f"""
 }}
     """
     fvSolutionDict += create_algorithmDict(numericalSettings)
     return fvSolutionDict
 
-def create_fvSchemesDict(numericalSettings):
-    header = ampersandPrimitives.createFoamHeader(className="dictionary", objectName="fvSchemes")
+
+def create_fvSchemesDict(numericalSettings: NumericalSettings):
+    header = DictGenerationUtils.createFoamHeader(
+        className="dictionary", objectName="fvSchemes")
     fvSchemesDict = f""+header
     fvSchemesDict += f"""
 ddtSchemes
 {{
-    default {numericalSettings['ddtSchemes']['default']};
+    default {numericalSettings.ddtSchemes.default};
 }}
 gradSchemes
 {{
-    default {numericalSettings['gradSchemes']['default']};
-    grad(p) {numericalSettings['gradSchemes']['grad(p)']};
-    grad(U) {numericalSettings['gradSchemes']['grad(U)']};
+    default {numericalSettings.gradSchemes.default};
+    grad(p) {numericalSettings.gradSchemes.grad_p};
+    grad(U) {numericalSettings.gradSchemes.grad_U};
 }}
 divSchemes
 {{
-    default {numericalSettings['divSchemes']['default']};
-    div(phi,U) {numericalSettings['divSchemes']['div(phi,U)']}; 
-    div(phi,k) {numericalSettings['divSchemes']['div(phi,k)']};
-    div(phi,omega) {numericalSettings['divSchemes']['div(phi,omega)']};
-    div(phi,epsilon) {numericalSettings['divSchemes']['div(phi,epsilon)']};
-    div(phi,nut) {numericalSettings['divSchemes']['div(phi,nut)']};
-    div(nuEff*dev(T(grad(U)))) {numericalSettings['divSchemes']['div(nuEff*dev(T(grad(U))))']};
+    default {numericalSettings.divSchemes.default};
+    div(phi,U) {numericalSettings.divSchemes.div_phi_U};
+    div(phi,k) {numericalSettings.divSchemes.div_phi_k};
+    div(phi,omega) {numericalSettings.divSchemes.div_phi_omega};
+    div(phi,epsilon) {numericalSettings.divSchemes.div_phi_epsilon};
+    div(phi,nut) {numericalSettings.divSchemes.div_phi_nut};
+    div(nuEff*dev(T(grad(U)))) {numericalSettings.divSchemes.div_nuEff_dev_T_grad_U};
 }}
 laplacianSchemes
 {{
-    default {numericalSettings['laplacianSchemes']['default']};
+    default {numericalSettings.laplacianSchemes.default};
 }}
 interpolationSchemes
 {{
-    default {numericalSettings['interpolationSchemes']['default']};
+    default {numericalSettings.interpolationSchemes.default};
 }}
 snGradSchemes
 {{
-    default {numericalSettings['snGradSchemes']['default']};
+    default {numericalSettings.snGradSchemes.default};
 }}
 fluxRequired
 {{
-    default {numericalSettings['fluxRequired']['default']};
+    default {numericalSettings.fluxRequired.default};
 }}
 wallDist
 {{
-    method {numericalSettings['wallDist']};
+    method {numericalSettings.wallDist};
 }}
 """
     return fvSchemesDict
-

@@ -17,14 +17,16 @@
  */
 """
 
-#from constants import parallelSettings
-from primitives import ampersandPrimitives
+# from constants import parallelSettings
+from src.constants import ParallelSettings
+from src.utils.dict_generation import DictGenerationUtils
 
-def createDecomposeParDict(parallelSettings):
-    decomposeParDict = ampersandPrimitives.createFoamHeader(className='dictionary', objectName='decomposeParDict')
+
+def createDecomposeParDict(parallelSettings: ParallelSettings):
+    decomposeParDict = DictGenerationUtils.createFoamHeader(
+        className='dictionary', objectName='decomposeParDict')
     decomposeParDict += f"""
-numberOfSubdomains {parallelSettings['numberOfSubdomains']};
-method {parallelSettings['method']};
+numberOfSubdomains {parallelSettings.numberOfSubdomains};
+method {parallelSettings.method};
 """
     return decomposeParDict
-    
