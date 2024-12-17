@@ -19,7 +19,7 @@
 
 from primitives import AmpersandIO
 from ampersand.project import AmpersandProject
-from ampersand.utils.stlAnalysis import BoundingBox, STLAnalysis
+from ampersand.stlAnalysis import BoundingBox, STLAnalysis
 
 # A collection of functions that are used to modify the project
 

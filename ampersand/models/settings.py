@@ -48,7 +48,40 @@ class BoundingBox(BaseModel):
 
 
 
+    @property
+    def max_length(self):
+        """
+        Get the maximum length of the bounding box.
 
+        Returns:
+            float: The maximum length of the bounding box.
+        """
+        return max(self.maxx - self.minx, self.maxy - self.miny, self.maxz - self.minz)
+
+    @property
+    def min_length(self):
+        """
+        Get the minimum length of the bounding box.
+
+        Returns:
+            float: The minimum length of the bounding box.
+        """
+        return min(self.maxx - self.minx, self.maxy - self.miny, self.maxz - self.minz)
+
+    def scale_dimensions(self, xmin_factor: float = 1.0, xmax_factor: float = 1.0, ymin_factor: float = 1.0, ymax_factor: float = 1.0, zmin_factor: float = 1.0, zmax_factor: float = 1.0):
+        x_length = self.maxx - self.minx
+        y_length = self.maxy - self.miny
+        z_length = self.maxz - self.minz
+
+
+        return BoundingBox(
+            minx = self.minx + xmin_factor*x_length,
+            maxx = self.maxx + xmax_factor*x_length,
+            miny = self.miny + ymin_factor*y_length,
+            maxy = self.maxy + ymax_factor*y_length,
+            minz = self.minz + zmin_factor*z_length,
+            maxz = self.maxz + zmax_factor*z_length
+        )
 
 
 class Domain(BoundingBox):
@@ -106,7 +139,7 @@ class BCPatch(Patch):
     faces: List[int]
 
 class TriSurfaceMeshGeometry(Patch):
-    type: Literal['triSurfaceMesh'] = 'triSurfaceMesh'
+    type: Literal["triSurfaceMesh"] = "triSurfaceMesh"
     refineMin: int
     refineMax: int
     featureEdges: bool
@@ -115,7 +148,7 @@ class TriSurfaceMeshGeometry(Patch):
     bounds: BoundingBox
 
 class SearchableBoxGeometry(Patch):
-    type: Literal['searchableBox'] = 'searchableBox'
+    type: Literal["searchableBox"] = "searchableBox"
     min: List[float]
     max: List[float]
 
@@ -189,16 +222,9 @@ class MeshQualityControls(BaseModel):
     nSmoothScale: int = 4
     errorReduction: float = 0.75
 
-
 class MeshSettings(BaseModel):
-    name: str = 'meshSettings'
-    scale: float = 1.0
     domain: Domain = Domain()
-    maxCellSize: float = 0.5
-    fineLevel: int = 1
-    internalFlow: bool = False
-    onGround: bool = False
-    halfModel: bool = False
+    scale: float = 1.0
     patches: Dict[str, BCPatch] = {
         'inlet': BCPatch(type='patch', purpose='inlet',
                          property=(1, 0, 0), faces=[0, 4, 7, 3]),
@@ -213,8 +239,15 @@ class MeshSettings(BaseModel):
         'top': BCPatch(type='symmetry', purpose='symmetry',
                        property=None, faces=[4, 5, 6, 7]),
     }
-    snappyHexSteps: SnappyHexSteps = SnappyHexSteps()
     geometry: dict[str, Geometry] = {}
+
+class SnappyHexMeshSettings(MeshSettings):
+    maxCellSize: float = 0.5
+    fineLevel: int = 1
+    internalFlow: bool = False
+    onGround: bool = False
+    halfModel: bool = False
+    snappyHexSteps: SnappyHexSteps = SnappyHexSteps()
     castellatedMeshControls: CastellatedMeshControls = CastellatedMeshControls()
     snapControls: SnapControls = SnapControls()
     addLayersControls: AddLayersControls = AddLayersControls()
@@ -224,7 +257,6 @@ class MeshSettings(BaseModel):
 
 
 class PhysicalProperties(BaseModel):
-    name: str = 'physicalProperties'
     rho: float = 1.0
     nu: float = 1.0e-6
     g: List[float] = [0, 0, -9.81]
@@ -453,7 +485,7 @@ class BoundaryConditions(BaseModel):
     )
 
 
-class SimulationSettings(BaseModel):
+class ControlSettings(BaseModel):
     transient: bool = False
     application: str = 'simpleFoam'
     startTime: int = 0
@@ -503,14 +535,14 @@ class PostProcessSettings(BaseModel):
     probeLocations: List = []
 
 
-class ProjectSettings(BaseModel):
-    mesh: MeshSettings = MeshSettings()
+class SimulationSettings(BaseModel):
+    mesh: MeshSettings = SnappyHexMeshSettings()
     physicalProperties: PhysicalProperties = PhysicalProperties()
     numerical: NumericalSettings = NumericalSettings()
     inletValues: InletValues = InletValues()
     solver: SolverSettings = SolverSettings()
     boundaryConditions: BoundaryConditions = BoundaryConditions()
-    simulation: SimulationSettings = SimulationSettings()
+    control: ControlSettings = ControlSettings()
     parallel: ParallelSettings = ParallelSettings()
     simulationFlow: SimulationFlowSettings = SimulationFlowSettings()
     postProcess: PostProcessSettings = PostProcessSettings()

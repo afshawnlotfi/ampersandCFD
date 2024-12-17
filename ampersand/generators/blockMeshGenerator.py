@@ -22,30 +22,27 @@ from ampersand.models.settings import MeshSettings
 from ampersand.utils.generation import GenerationUtils
 
 
-def create_blockMeshDict(meshSettings: MeshSettings) -> str:
-    header = GenerationUtils.createFoamHeader(
-        className="dictionary", objectName="blockMeshDict"
-    )
-    blockMeshDict = f"""{header}
+def create_blockMeshDict(mesh_settings: MeshSettings) -> str:
+    return f"""{GenerationUtils.createFoamHeader("dictionary", "blockMeshDict")}
 
 // ********* Domain *********
-scale {meshSettings.scale};
+scale {mesh_settings.scale};
 
 vertices
 (
-    ({meshSettings.domain.minx} {meshSettings.domain.miny} {meshSettings.domain.minz})
-    ({meshSettings.domain.maxx} {meshSettings.domain.miny} {meshSettings.domain.minz})
-    ({meshSettings.domain.maxx} {meshSettings.domain.maxy} {meshSettings.domain.minz})
-    ({meshSettings.domain.minx} {meshSettings.domain.maxy} {meshSettings.domain.minz})
-    ({meshSettings.domain.minx} {meshSettings.domain.miny} {meshSettings.domain.maxz})
-    ({meshSettings.domain.maxx} {meshSettings.domain.miny} {meshSettings.domain.maxz})
-    ({meshSettings.domain.maxx} {meshSettings.domain.maxy} {meshSettings.domain.maxz})
-    ({meshSettings.domain.minx} {meshSettings.domain.maxy} {meshSettings.domain.maxz})
+    ({mesh_settings.domain.minx} {mesh_settings.domain.miny} {mesh_settings.domain.minz})
+    ({mesh_settings.domain.maxx} {mesh_settings.domain.miny} {mesh_settings.domain.minz})
+    ({mesh_settings.domain.maxx} {mesh_settings.domain.maxy} {mesh_settings.domain.minz})
+    ({mesh_settings.domain.minx} {mesh_settings.domain.maxy} {mesh_settings.domain.minz})
+    ({mesh_settings.domain.minx} {mesh_settings.domain.miny} {mesh_settings.domain.maxz})
+    ({mesh_settings.domain.maxx} {mesh_settings.domain.miny} {mesh_settings.domain.maxz})
+    ({mesh_settings.domain.maxx} {mesh_settings.domain.maxy} {mesh_settings.domain.maxz})
+    ({mesh_settings.domain.minx} {mesh_settings.domain.maxy} {mesh_settings.domain.maxz})
 );
 
 blocks
 (
-    hex (0 1 2 3 4 5 6 7) ({meshSettings.domain.nx} {meshSettings.domain.ny} {meshSettings.domain.nz}) simpleGrading (1 1 1)
+    hex (0 1 2 3 4 5 6 7) ({mesh_settings.domain.nx} {mesh_settings.domain.ny} {mesh_settings.domain.nz}) simpleGrading (1 1 1)
 );
 
 edges
@@ -53,10 +50,8 @@ edges
 );
 
 boundary
-(
-"""
-    for patch_name, patch in meshSettings.patches.items():
-        blockMeshDict += f"""
+({"\n".join(
+        f"""
     {patch_name}
     {{
         type {patch.type};
@@ -65,8 +60,8 @@ boundary
             ({patch.faces[0]} {patch.faces[1]} {patch.faces[2]} {patch.faces[3]})
         );
     }}
-"""
-    blockMeshDict += """
+""" for patch_name, patch in mesh_settings.patches.items())}
+
 );
 mergePatchPairs
 (
@@ -75,15 +70,14 @@ mergePatchPairs
 // ************************************************************************* //
 """
 
-    return blockMeshDict
-
 
 # Generate blockMeshDict
 # read in data to meshSettings from meshSettings.yaml
 if __name__ == "__main__":
     from ampersand.primitives import AmpersandUtils
+    from ampersand.models.settings import SnappyHexMeshSettings
 
-    meshSettings = MeshSettings.model_validate(AmpersandUtils.yaml_to_dict("examples/basic/meshSettings.yaml"))
+    meshSettings = SnappyHexMeshSettings.model_validate(AmpersandUtils.yaml_to_dict("examples/basic/meshSettings.yaml"))
     blockMeshDict = create_blockMeshDict(meshSettings)
 
     # Save to file

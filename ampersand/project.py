@@ -26,8 +26,8 @@ import os
 import shutil
 from typing import Optional
 from primitives import AmpersandUtils, AmpersandIO, FluidPhysicalProperties
-from ampersand.models.settings import Domain, Patch, ProjectSettings, BCPatchType, PatchPurpose
-from ampersand.utils.stlAnalysis import BoundingBox, STLAnalysis
+from ampersand.models.settings import Domain, Patch, SimulationSettings, BCPatchType, PatchPurpose
+from ampersand.stlAnalysis import BoundingBox, STLAnalysis
 from ampersand.generators.blockMeshGenerator import create_blockMeshDict
 from ampersand.generators.decomposeParGenerator import createDecomposeParDict
 from ampersand.snappyHexMeshGenerator import create_snappyHexMeshDict
@@ -56,7 +56,7 @@ class AmpersandProject:  # ampersandProject class to handle the project creation
         self.current_stl_file = None   # current stl file being processed
         self.project_directory_path = None
         self.project_name = None
-        self.settings = ProjectSettings()
+        self.settings = SimulationSettings()
         self.project_path = ""
         self.stl_files = []  # list to store the settings for stl files
         self.stl_names = []  # list to store the names of the stl files
@@ -365,7 +365,7 @@ class AmpersandProject:  # ampersandProject class to handle the project creation
     # If the project is already existing, load the settings from the project_settings.yaml file
     def load_settings(self):
         AmpersandIO.printMessage("Loading project settings",GUIMode=self.GUIMode,window=self.window)
-        self.settings = ProjectSettings.model_validate(AmpersandUtils.yaml_to_dict('project_settings.yaml'))
+        self.settings = SimulationSettings.model_validate(AmpersandUtils.yaml_to_dict('project_settings.yaml'))
         for patch_name, patch in self.meshSettings.geometry.items():
             if(patch.type=='triSurfaceMesh'):
                 if(patch_name in self.stl_names):
@@ -380,7 +380,7 @@ class AmpersandProject:  # ampersandProject class to handle the project creation
 
 
     def setup_default_settings(self):
-        self.settings = ProjectSettings()
+        self.settings = SimulationSettings()
         self.write_settings()
 
     # Create the settings for the project or load the existing settings
@@ -523,43 +523,42 @@ class AmpersandProject:  # ampersandProject class to handle the project creation
 
 
 
-    def analyze_stl_file(self,stl_file_number=0):
-        rho = self.settings.physicalProperties.rho
-        nu = self.settings.physicalProperties.nu
-        U = max(self.settings.inletValues.U)
-        ER = self.meshSettings.addLayersControls.expansionRatio
-        try:
-            stl_file_number = int(stl_file_number)
-        except ValueError:
-            AmpersandIO.printError("Invalid input. Aborting operation",GUIMode=self.GUIMode)
-            return -1
-        if stl_file_number < 0 or stl_file_number > len(self.stl_files):
-            AmpersandIO.printError("Invalid file number. Aborting operation",GUIMode=self.GUIMode)
-            return -1
-        stl_file = self.stl_files[stl_file_number]
-        stl_name = stl_file.name
-        AmpersandIO.printMessage(f"Analyzing {stl_name}",GUIMode=self.GUIMode,window=self.window)
-        stl_path = os.path.join(self.project_path, "constant", "triSurface", stl_name)
-        stlBoundingBox = STLAnalysis.compute_bounding_box(stl_path)
-        domain_size, nx, ny, nz, refLevel,target_y,nLayers = STLAnalysis.calc_mesh_settings(stlBoundingBox, nu, rho,U=U,maxCellSize=2.0,expansion_ratio=ER,
-                                                                           onGround=self.onGround,internalFlow=self.internalFlow,
-                                                                           refinement=self.refinement,halfModel=self.halfModel,
-                                                                           GUI=self.GUIMode,window=self.window)
-        featureLevel = max(refLevel,1)
-        self.meshSettings = STLAnalysis.set_mesh_settings(self.meshSettings, domain_size, nx, ny, nz, refLevel, featureLevel,nLayers=nLayers) 
-        self.update_domain_size(domain_size,nx,ny,nz)
-        self.meshSettings = STLAnalysis.set_mesh_location(self.meshSettings, stl_path,self.internalFlow)
-        refinementBoxLevel = max(2,refLevel-3)
-        self.meshSettings = STLAnalysis.addRefinementBoxToMesh(meshSettings=self.meshSettings, stl_path=stl_path,refLevel=refinementBoxLevel,internalFlow=self.internalFlow)
-        if(self.internalFlow==False and self.onGround==True):
-            # if the flow is external and the geometry is on the ground, add a ground refinement box
-            self.meshSettings = STLAnalysis.addGroundRefinementBoxToMesh(meshSettings=self.meshSettings, stl_path=stl_path,refLevel=refinementBoxLevel)
-        self.meshSettings = STLAnalysis.set_layer_thickness(self.meshSettings, 0.5) # set the layer thickness to 0.5 times the cell size
-        # store the background mesh size for future reference
-        maxCellSize = abs((domain_size.maxx-domain_size.minx)/nx)
-        self.settings.mesh.maxCellSize = maxCellSize
-        #self.meshSettings = stlAnalysis.set_min_vol(self.meshSettings, minVol)
-        return False
+    # def analyze_stl_file(self,stl_file_number=0):
+    #     rho = self.settings.physicalProperties.rho
+    #     nu = self.settings.physicalProperties.nu
+    #     U = max(self.settings.inletValues.U)
+    #     ER = self.meshSettings.addLayersControls.expansionRatio
+    #     try:
+    #         stl_file_number = int(stl_file_number)
+    #     except ValueError:
+    #         AmpersandIO.printError("Invalid input. Aborting operation",GUIMode=self.GUIMode)
+    #         return -1
+    #     if stl_file_number < 0 or stl_file_number > len(self.stl_files):
+    #         AmpersandIO.printError("Invalid file number. Aborting operation",GUIMode=self.GUIMode)
+    #         return -1
+    #     stl_file = self.stl_files[stl_file_number]
+    #     stl_name = stl_file.name
+    #     AmpersandIO.printMessage(f"Analyzing {stl_name}",GUIMode=self.GUIMode,window=self.window)
+    #     stl_path = os.path.join(self.project_path, "constant", "triSurface", stl_name)
+    #     stlBoundingBox = STLAnalysis.compute_bounding_box(stl_path)
+    #     domain_size, nx, ny, nz, refLevel,target_y,nLayers = STLAnalysis.calc_mesh_settings(stlBoundingBox, nu, rho,U=U,maxCellSize=2.0,expansion_ratio=ER,
+    #                                                                        on_ground=self.onGround,internal_flow=self.internalFlow,
+    #                                                                        refinement=self.refinement,half_model=self.halfModel,
+    #                                                                        GUI=self.GUIMode,window=self.window)
+    #     self.meshSettings = STLAnalysis.set_mesh_settings(self.meshSettings, domain_size, nx, ny, nz, refLevel, featureLevel,nLayers=nLayers) 
+    #     self.update_domain_size(domain_size,nx,ny,nz)
+    #     self.meshSettings = STLAnalysis.calc_location_in_mesh(self.meshSettings, stl_path,self.internalFlow)
+    #     refinementBoxLevel = max(2,refLevel-3)
+    #     self.meshSettings = STLAnalysis.addRefinementBoxToMesh(meshSettings=self.meshSettings, stl_path=stl_path,refLevel=refinementBoxLevel,internalFlow=self.internalFlow)
+    #     if(self.internalFlow==False and self.onGround==True):
+    #         # if the flow is external and the geometry is on the ground, add a ground refinement box
+    #         self.meshSettings = STLAnalysis.addGroundRefinementBoxToMesh(meshSettings=self.meshSettings, stl_path=stl_path,refLevel=refinementBoxLevel)
+    #     self.meshSettings = STLAnalysis.set_layer_thickness(self.meshSettings, 0.5) # set the layer thickness to 0.5 times the cell size
+    #     # store the background mesh size for future reference
+    #     maxCellSize = abs((domain_size.maxx-domain_size.minx)/nx)
+    #     self.settings.mesh.maxCellSize = maxCellSize
+    #     #self.meshSettings = stlAnalysis.set_min_vol(self.meshSettings, minVol)
+    #     return False
     
 
     # def get_probe_location(self):

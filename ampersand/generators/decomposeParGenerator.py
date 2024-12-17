@@ -22,9 +22,7 @@ from ampersand.utils.generation import GenerationUtils
 
 
 def createDecomposeParDict(parallelSettings: ParallelSettings):
-    decomposeParDict = GenerationUtils.createFoamHeader(
-        className='dictionary', objectName='decomposeParDict')
-    decomposeParDict += f"""
+    decomposeParDict = f"""{GenerationUtils.createFoamHeader('dictionary', 'decomposeParDict')}
 numberOfSubdomains {parallelSettings.numberOfSubdomains};
 method {parallelSettings.method};
 """

@@ -23,7 +23,7 @@ import numpy as np
 import yaml
 import sys
 from tkinter import filedialog, Tk
-from ampersand.models.settings import MeshSettings
+from ampersand.models.settings import SnappyHexMeshSettings
 from ampersand.utils.generation import GenerationUtils
 from pydantic import BaseModel
 
@@ -85,7 +85,7 @@ class AmpersandUtils:
         return 0
 
     @staticmethod
-    def list_boundary_conditions(meshSettings: MeshSettings):
+    def list_boundary_conditions(meshSettings: SnappyHexMeshSettings):
         i = 1
         boundaries = []
         AmpersandIO.show_title("Boundary Conditions")
@@ -404,17 +404,7 @@ class AmpersandIO:
                 "Invalid input. Please enter a boolean value.")
             return AmpersandIO.get_input_bool(prompt)
 
-    @staticmethod
-    def get_option_choice(prompt, options, title=None):
-        if title:
-            AmpersandIO.printMessage(title)
-        AmpersandIO.print_numbered_list(options)
-        choice = AmpersandIO.get_input_int(prompt)
-        if choice > len(options) or choice <= 0:
-            AmpersandIO.printError(
-                "Invalid choice. Please choose from the given options.")
-            return AmpersandIO.get_option_choice(prompt, options)
-        return choice-1
+
 
     @staticmethod
     def show_title(title):
@@ -436,8 +426,19 @@ class AmpersandIO:
 
 
 class AmpersandDataInput:
-    def __init__(self):
-        pass
+
+    @staticmethod
+    def get_option_choice(prompt: str, options: list, title=None):
+        if title:
+            AmpersandIO.printMessage(title)
+        AmpersandIO.print_numbered_list(options)
+        choice = AmpersandIO.get_input_int(prompt)
+        if choice > len(options) or choice <= 0:
+            AmpersandIO.printError(
+                "Invalid choice. Please choose from the given options.")
+            return AmpersandDataInput.get_option_choice(prompt, options)
+        
+        return choice-1
 
     @staticmethod
     def get_inlet_values():

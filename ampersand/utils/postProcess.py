@@ -19,7 +19,7 @@
 
 from typing import Literal, Union
 from primitives import AmpersandIO
-from ampersand.models.settings import MeshSettings, PostProcessSettings
+from ampersand.models.settings import SnappyHexMeshSettings, PostProcessSettings
 
 
 class PostProcess:
@@ -162,7 +162,7 @@ streamLines
         return probeLocation
 
     @staticmethod
-    def get_mass_flow_rate_FO(meshSettings: MeshSettings):
+    def get_mass_flow_rate_FO(meshSettings: SnappyHexMeshSettings):
         massFlowFO = ""
         # for internal flow problems, get all patches
         if (meshSettings.internalFlow):
@@ -179,7 +179,7 @@ streamLines
         return massFlowFO
 
     @staticmethod
-    def create_FOs(meshSettings: MeshSettings, postProcessSettings: PostProcessSettings, useFOs=True):
+    def create_FOs(meshSettings: SnappyHexMeshSettings, postProcessSettings: PostProcessSettings, useFOs=True):
         if (not useFOs):
             return "// No function objects are used"
         FOs = ""

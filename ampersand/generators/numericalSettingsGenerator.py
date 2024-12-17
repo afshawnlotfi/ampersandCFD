@@ -22,9 +22,7 @@ from ampersand.utils.generation import GenerationUtils
 
 
 def create_algorithmDict(numericalSettings: NumericalSettings):
-    # header = DictGenerationUtils.createFoamHeader(className="dictionary", objectName="pimpleDict")
-    algorithmDict = f""
-    algorithmDict += f"""
+    algorithmDict = f"""
 PIMPLE
 {{
     nOuterCorrectors {numericalSettings.pimpleDict.nOuterCorrectors};
@@ -119,9 +117,7 @@ def create_solverDict(solverSettings: SolverSettings, solverName="U"):
 
 
 def create_solverFinalDict(solverSettings: SolverSettings, solverName="U"):
-
-    solverDict = f""
-    solverDict += f"""
+    solverDict = f"""
     {solverName}Final
     {{
         ${solverName}
@@ -133,10 +129,7 @@ def create_solverFinalDict(solverSettings: SolverSettings, solverName="U"):
 
 
 def create_fvSolutionDict(numericalSettings: NumericalSettings, solverSettings: SolverSettings):
-    header = GenerationUtils.createFoamHeader(
-        className="dictionary", objectName="fvSolution")
-    fvSolutionDict = f""+header
-    fvSolutionDict += f"""
+    fvSolutionDict = f"""{GenerationUtils.createFoamHeader("dictionary", "fvSolution")}
 solvers
 {{
     """
@@ -151,10 +144,7 @@ solvers
 
 
 def create_fvSchemesDict(numericalSettings: NumericalSettings):
-    header = GenerationUtils.createFoamHeader(
-        className="dictionary", objectName="fvSchemes")
-    fvSchemesDict = f""+header
-    fvSchemesDict += f"""
+    fvSchemesDict = f"""{GenerationUtils.createFoamHeader("dictionary", "fvSchemes")}
 ddtSchemes
 {{
     default {numericalSettings.ddtSchemes.default};

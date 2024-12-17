@@ -22,7 +22,7 @@
 # This is an early version of the script and will be updated in the future.
 # Brute force writing is used instead of a more elegant solution.
 from primitives import AmpersandUtils
-from ampersand.models.settings import Patch, MeshSettings, BoundaryConditions, InletValues, Patch
+from ampersand.models.settings import Patch, SnappyHexMeshSettings, BoundaryConditions, InletValues, Patch, TriSurfaceMeshGeometry
 from ampersand.utils.generation import GenerationUtils
 
 
@@ -74,7 +74,7 @@ def create_turbulence_boundary_condition(patch: Patch, patch_name: str, wallFunc
         # write the velocity
         bc += f"""
         type            fixedValue;
-        value           uniform {property};"""
+        value           uniform {patch.property};"""
     # if the purpose is an outlet, give an inletOutlet boundary condition
     elif patch.purpose == "outlet":
         # write the pressure
@@ -138,7 +138,7 @@ def create_scalar_boundary_condition(patch: Patch, patch_name: str, objName: str
     raise ValueError("Invalid scalar boundary condition")
 
 def create_scalar_file(
-    meshSettings: MeshSettings,
+    meshSettings: SnappyHexMeshSettings,
     objName: str = "k",
     dimensions: tuple = (0, 2, -2),
     value: float = 0.0,
@@ -155,14 +155,14 @@ def create_scalar_file(
 
     # If internal flow, set the boundary conditions for STL patches
     for geometry_name, geometry in meshSettings.geometry.items():
-        if geometry.type == 'triSurfaceMesh':
+        if isinstance(geometry, TriSurfaceMeshGeometry):
             s_file += create_scalar_boundary_condition(geometry, geometry_name, objName)
 
     s_file += "\n}"
     return s_file
 
 
-def create_u_file(meshSettings: MeshSettings, boundaryConditions: BoundaryConditions) -> str:
+def create_u_file(meshSettings: SnappyHexMeshSettings, boundaryConditions: BoundaryConditions) -> str:
     header = GenerationUtils.createFoamHeader(
         className="volVectorField", objectName="U")
     dims = GenerationUtils.createDimensions(M=0, L=1, T=-1)
@@ -179,38 +179,38 @@ def create_u_file(meshSettings: MeshSettings, boundaryConditions: BoundaryCondit
 
     # If internal flow, set the boundary conditions for STL patches
     for geometry_name, geometry in meshSettings.geometry.items():
-        if geometry.type == 'triSurfaceMesh':
+        if isinstance(geometry, TriSurfaceMeshGeometry):
             U_file += write_vector_boundary_condition(geometry, geometry_name)
     U_file += """
 }"""
     return U_file
 
 
-def create_p_file(meshSettings: MeshSettings) -> str:
+def create_p_file(meshSettings: SnappyHexMeshSettings) -> str:
     return create_scalar_file(
         meshSettings, objName="p", dimensions=(0, 2, -2)
     )
 
 
-def create_k_file(meshSettings: MeshSettings) -> str:
+def create_k_file(meshSettings: SnappyHexMeshSettings) -> str:
     return create_scalar_file(
         meshSettings, objName="k", dimensions=(0, 2, -2)
     )
 
 
-def create_epsilon_file(meshSettings: MeshSettings) -> str:
+def create_epsilon_file(meshSettings: SnappyHexMeshSettings) -> str:
     return create_scalar_file(
         meshSettings, objName="epsilon", dimensions=(0, 2, -2)
     )
 
 
-def create_omega_file(meshSettings: MeshSettings) -> str:
+def create_omega_file(meshSettings: SnappyHexMeshSettings) -> str:
     return create_scalar_file(
         meshSettings, objName="omega", dimensions=(0, 2, -2)
     )
 
 
-def create_nut_file(meshSettings: MeshSettings) -> str:
+def create_nut_file(meshSettings: SnappyHexMeshSettings) -> str:
     header = GenerationUtils.createFoamHeader(
         className="volScalarField", objectName="nut")
     dims = GenerationUtils.createDimensions(M=0, L=2, T=-1)
@@ -224,7 +224,7 @@ def create_nut_file(meshSettings: MeshSettings) -> str:
 
     # If internal flow, set the boundary conditions for STL patches
     for geometry_name, geometry in meshSettings.geometry.items():
-        if geometry.type == 'triSurfaceMesh':
+        if isinstance(geometry, TriSurfaceMeshGeometry):
             nut_file += create_turbulence_boundary_condition(geometry, geometry_name, wallFunction="nutkWallFunction")
     nut_file += "\n}"
     return nut_file
@@ -247,7 +247,7 @@ def create_nut_file(meshSettings: MeshSettings) -> str:
 #     return boundaryConditions
 
 
-def create_boundary_conditions(meshSettings: MeshSettings, boundaryConditions: BoundaryConditions, nu: float = 1.e-5) -> None:
+def create_boundary_conditions(meshSettings: SnappyHexMeshSettings, boundaryConditions: BoundaryConditions, nu: float = 1.e-5) -> None:
     """
     Create boundary condition files for an OpenFOAM pimpleFoam simulation.
 

@@ -17,12 +17,12 @@
  */
 """
 
-from ampersand.models.settings import SearchableBoxGeometry, TriSurfaceMeshGeometry, MeshSettings
+from ampersand.models.settings import SearchableBoxGeometry, TriSurfaceMeshGeometry, SnappyHexMeshSettings
 from primitives import AmpersandUtils
 from ampersand.utils.generation import GenerationUtils
 
 
-def create_snappyHexMeshDict(meshSettings: MeshSettings):
+def create_snappyHexMeshDict(meshSettings: SnappyHexMeshSettings):
     """
     Create a snappyHexMeshDict for OpenFOAM.
 
@@ -320,7 +320,7 @@ mergeTolerance {meshSettings.mergeTolerance};"""
 
 # Example usage
 if __name__ == "__main__":
-    meshSettings = MeshSettings.model_validate(
+    meshSettings = SnappyHexMeshSettings.model_validate(
         AmpersandUtils.yaml_to_dict("examples/basic/meshSettings.yaml")
     )
 
@@ -328,3 +328,173 @@ if __name__ == "__main__":
     with open("outputs/snappyHexMeshDict", "w") as f:
         f.write(snappy_hex_mesh_dict_content)
     print("snappyHexMeshDict file created.")
+
+
+from typing import Dict, Any, List, Union
+
+def create_snappy_hex_mesh_dict_python(mesh_settings):
+    """
+    Convert SnappyHexMeshSettings to a Python dictionary representation.
+
+    Parameters:
+    mesh_settings (SnappyHexMeshSettings): Mesh generation settings object
+
+    Returns:
+    Dict[str, Any]: A Python dictionary representing the snappyHexMeshDict configuration
+    """
+    # Initialize the dictionary to store mesh configuration
+    snappy_hex_mesh_dict = {}
+
+    # Add mesh generation steps
+    snappy_hex_mesh_dict['steps'] = {
+        'castellatedMesh': mesh_settings.snappyHexSteps.castellatedMesh,
+        'snap': mesh_settings.snappyHexSteps.snap,
+        'addLayers': mesh_settings.snappyHexSteps.addLayers
+    }
+
+    # Process geometry
+    snappy_hex_mesh_dict['geometry'] = {}
+    features = []
+    refinement_surfaces = {}
+    refinement_regions = {}
+
+    for geometry_name, geometry in mesh_settings.geometry.items():
+        # Process TriSurfaceMesh geometries
+        if hasattr(geometry, 'type') and geometry.type == 'triSurfaceMesh':
+            # Prepare geometry details
+            geo_details = {
+                'type': geometry.type,
+                'name': geometry_name[:-4],
+                'purpose': geometry.purpose
+            }
+            
+            # Add to main geometry dictionary
+            snappy_hex_mesh_dict['geometry'][geometry_name] = geo_details
+
+            # Process feature edges
+            if getattr(geometry, 'featureEdges', False):
+                features.append({
+                    'file': f"{geometry_name[:-4]}.eMesh",
+                    'level': geometry.featureLevel
+                })
+
+            # Process refinement surfaces
+            refinement_surface_config = {
+                'level': [0, 0],
+                'refineMin': geometry.refineMin if hasattr(geometry, 'refineMin') else 0,
+                'refineMax': geometry.refineMax if hasattr(geometry, 'refineMax') else 0
+            }
+
+            # Add special handling for different purposes
+            if geometry.purpose == 'inlet' or geometry.purpose == 'outlet':
+                refinement_surface_config['patchType'] = 'patch'
+            elif geometry.purpose == 'baffle':
+                refinement_surface_config['patchType'] = 'baffles'
+            elif geometry.purpose in ['wall', None]:
+                refinement_surface_config['patchType'] = 'wall'
+            
+            refinement_surfaces[geometry_name[:-4]] = refinement_surface_config
+
+            # Process refinement regions
+            if geometry.purpose in ['refinementSurface', 'refinementRegion', 'cellZone']:
+                region_config = {
+                    'mode': 'inside' if geometry.purpose in ['refinementRegion', 'cellZone'] else 'distance',
+                    'level': geometry.property if hasattr(geometry, 'property') else 0
+                }
+                refinement_regions[geometry_name[:-4]] = region_config
+
+        # Process SearchableBox geometries
+        elif hasattr(geometry, 'type') and geometry.type == 'searchableBox':
+            box_details = {
+                'type': geometry.type,
+                'min': geometry.min,
+                'max': geometry.max
+            }
+            snappy_hex_mesh_dict['geometry'][geometry_name] = box_details
+
+            # Add refinement region for searchable boxes
+            refinement_regions[geometry_name] = {
+                'mode': 'inside',
+                'level': geometry.refineMax if hasattr(geometry, 'refineMax') else 0
+            }
+
+    # Castellated Mesh Controls
+    snappy_hex_mesh_dict['castellatedMeshControls'] = {
+        key: getattr(mesh_settings.castellatedMeshControls, key) 
+        for key in [
+            'maxLocalCells', 'maxGlobalCells', 'minRefinementCells', 
+            'maxLoadUnbalance', 'nCellsBetweenLevels', 'resolveFeatureAngle',
+            'locationInMesh', 'allowFreeStandingZoneFaces'
+        ]
+    }
+
+    # Add extracted collections
+    snappy_hex_mesh_dict['features'] = features
+    snappy_hex_mesh_dict['refinementSurfaces'] = refinement_surfaces
+    snappy_hex_mesh_dict['refinementRegions'] = refinement_regions
+
+    # Snap Controls
+    snappy_hex_mesh_dict['snapControls'] = {
+        key: getattr(mesh_settings.snapControls, key)
+        for key in [
+            'nSmoothPatch', 'tolerance', 'nSolveIter', 'nRelaxIter', 
+            'nFeatureSnapIter', 'implicitFeatureSnap', 'explicitFeatureSnap', 
+            'multiRegionFeatureSnap'
+        ]
+    }
+
+    # Add Layers Controls
+    snappy_hex_mesh_dict['addLayersControls'] = {
+        key: getattr(mesh_settings.addLayersControls, key)
+        for key in [
+            'relativeSizes', 'expansionRatio', 'finalLayerThickness', 
+            'minThickness', 'nGrow', 'featureAngle', 'slipFeatureAngle', 
+            'nRelaxIter', 'nSmoothSurfaceNormals', 'nSmoothNormals', 
+            'nSmoothThickness', 'maxFaceThicknessRatio', 
+            'maxThicknessToMedialRatio', 'minMedianAxisAngle', 
+            'nBufferCellsNoExtrude', 'nLayerIter'
+        ]
+    }
+
+    # Add layer specifications for specific geometries
+    layer_specs = {}
+    for geometry_name, geometry in mesh_settings.geometry.items():
+        if hasattr(geometry, 'purpose') and geometry.purpose in ['wall', 'baffle', 'cellZone']:
+            layer_specs[f"{geometry_name[:-4]}.*"] = {
+                'nSurfaceLayers': getattr(geometry, 'nLayers', 1)
+            }
+    snappy_hex_mesh_dict['addLayersControls']['layers'] = layer_specs
+
+    # Mesh Quality Controls
+    snappy_hex_mesh_dict['meshQualityControls'] = {
+        key: getattr(mesh_settings.meshQualityControls, key)
+        for key in [
+            'maxNonOrtho', 'maxBoundarySkewness', 'maxInternalSkewness', 
+            'maxConcave', 'minVol', 'minTetQuality', 'minArea', 'minTwist', 
+            'minDeterminant', 'minFaceWeight', 'minVolRatio', 
+            'minTriangleTwist', 'nSmoothScale', 'errorReduction'
+        ]
+    }
+
+    # Debug and merge tolerance
+    snappy_hex_mesh_dict['debug'] = mesh_settings.debug
+    snappy_hex_mesh_dict['mergeTolerance'] = mesh_settings.mergeTolerance
+
+    return snappy_hex_mesh_dict
+
+# Example usage
+if __name__ == "__main__":
+    from ampersand.models.settings import SnappyHexMeshSettings
+    from primitives import AmpersandUtils
+
+    # Load mesh settings from a YAML file
+    mesh_settings = SnappyHexMeshSettings.model_validate(
+        AmpersandUtils.yaml_to_dict("examples/basic/meshSettings.yaml")
+    )
+
+    # Convert to Python dictionary
+    python_dict = create_snappy_hex_mesh_dict_python(mesh_settings)
+    
+    # Optionally, print or save the dictionary
+    import json
+    print(json.dumps(python_dict, indent=2))

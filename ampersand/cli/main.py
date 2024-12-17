@@ -20,7 +20,7 @@
 from primitives import AmpersandIO
 from ampersand.cli.create_project import create_project
 from ampersand.cli.open_project import open_project
-from ampersand.utils.watch_sim import watch_sim
+from ampersand.watch_sim import watch_sim
 #from headers import get_ampersand_header
 #import os
 import argparse

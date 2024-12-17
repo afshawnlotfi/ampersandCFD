@@ -18,18 +18,15 @@
 """
 
 from typing import Literal
-from ampersand.models.settings import MeshSettings
+from ampersand.models.settings import SnappyHexMeshSettings, TriSurfaceMeshGeometry
 from ampersand.utils.generation import GenerationUtils
 
 
-def create_surfaceDict(meshSettings: MeshSettings, objectName: Literal["surfaceFeatureExtractDict", "surfaceFeaturesDict"]) -> str:
-    header = GenerationUtils.createFoamHeader(
-        className="dictionary", objectName=objectName
-    )
-    surfaceDict = header
+def create_surfaceDict(meshSettings: SnappyHexMeshSettings, objectName: Literal["surfaceFeatureExtractDict", "surfaceFeaturesDict"]) -> str:
+    surfaceDict = GenerationUtils.createFoamHeader("dictionary", objectName)
     for geometry_name, geometry in meshSettings.geometry.items():
-        if geometry.type == 'triSurfaceMesh':
-            surfaceFeature = f"""\n{geometry_name}
+        if isinstance(geometry, TriSurfaceMeshGeometry):
+            surfaceDict += f"""\n{geometry_name}
 {{
 extractionMethod    extractFromSurface;
 includedAngle   170;
@@ -41,14 +38,12 @@ subsetFeatures
 writeObj            yes;
 writeSets           no;
 }}"""
-            surfaceDict += surfaceFeature
     return surfaceDict
-
 
 if __name__ == "__main__":
     from primitives import AmpersandUtils
 
-    meshSettings = MeshSettings.model_validate(
+    meshSettings = SnappyHexMeshSettings.model_validate(
         AmpersandUtils.yaml_to_dict('meshSettings.yaml'))
     surfaceFeatureExtractDict = create_surfaceDict(
         meshSettings, "surfaceFeatureExtractDict")

@@ -23,12 +23,12 @@
 # Brute force writing is used instead of a more elegant solution.
 # import yaml
 from primitives import AmpersandUtils
-from ampersand.models.settings import BoundaryConditions, InletValues, MeshSettings, TriSurfaceMeshGeometry
-from ampersand.utils.stlAnalysis import STLAnalysis
+from ampersand.models.settings import BoundaryConditions, InletValues, SnappyHexMeshSettings, TriSurfaceMeshGeometry
+from ampersand.stlAnalysis import STLAnalysis
 from ampersand.utils.generation import GenerationUtils
 
 
-def create_u_file(meshSettings: MeshSettings, boundaryConditions: BoundaryConditions):
+def create_u_file(meshSettings: SnappyHexMeshSettings, boundaryConditions: BoundaryConditions):
     header = GenerationUtils.createFoamHeader(
         className="volVectorField", objectName="U")
     dims = GenerationUtils.createDimensions(M=0, L=1, T=-1)
@@ -91,7 +91,7 @@ def create_u_file(meshSettings: MeshSettings, boundaryConditions: BoundaryCondit
     """
     # If internal flow, set the boundary conditions for STL patches
     for geometry_name, geometry in meshSettings.geometry.items():
-        if (geometry.type == 'triSurfaceMesh'):
+        if (isinstance(geometry, TriSurfaceMeshGeometry)):
             if (geometry.purpose == 'wall'):
                 U_file += f"""
     "{geometry_name[:-4]}.*"
@@ -132,7 +132,7 @@ def create_u_file(meshSettings: MeshSettings, boundaryConditions: BoundaryCondit
     return U_file
 
 
-def create_p_file(meshSettings: MeshSettings, boundaryConditions: BoundaryConditions):
+def create_p_file(meshSettings: SnappyHexMeshSettings, boundaryConditions: BoundaryConditions):
     header = GenerationUtils.createFoamHeader(
         className="volScalarField", objectName="p")
     dims = GenerationUtils.createDimensions(M=0, L=2, T=-2)
@@ -193,7 +193,7 @@ def create_p_file(meshSettings: MeshSettings, boundaryConditions: BoundaryCondit
     """
 
     for geometry_name, geometry in meshSettings.geometry.items():
-        if (geometry.type == 'triSurfaceMesh'):
+        if (isinstance(geometry, TriSurfaceMeshGeometry)):
             if (geometry.purpose == 'wall'):
                 p_file += f"""
    "{geometry_name[:-4]}.*"
@@ -225,7 +225,7 @@ def create_p_file(meshSettings: MeshSettings, boundaryConditions: BoundaryCondit
     return p_file
 
 
-def create_k_file(meshSettings: MeshSettings, boundaryConditions: BoundaryConditions, nu=1.0e-5):
+def create_k_file(meshSettings: SnappyHexMeshSettings, boundaryConditions: BoundaryConditions, nu=1.0e-5):
     header = GenerationUtils.createFoamHeader(
         className="volScalarField", objectName="k")
     dims = GenerationUtils.createDimensions(M=0, L=2, T=-2)
@@ -288,7 +288,7 @@ def create_k_file(meshSettings: MeshSettings, boundaryConditions: BoundaryCondit
     """
 
     for geometry_name, geometry in meshSettings.geometry.items():
-        if (geometry.type == 'triSurfaceMesh'):
+        if (isinstance(geometry, TriSurfaceMeshGeometry)):
             if (geometry.purpose == 'wall'):
                 k_file += f"""
     "{geometry_name[:-4]}.*"
@@ -329,7 +329,7 @@ def create_k_file(meshSettings: MeshSettings, boundaryConditions: BoundaryCondit
     return k_file
 
 
-def create_omega_file(meshSettings: MeshSettings, boundaryConditions: BoundaryConditions, nu=1.0e-5):
+def create_omega_file(meshSettings: SnappyHexMeshSettings, boundaryConditions: BoundaryConditions, nu=1.0e-5):
     header = GenerationUtils.createFoamHeader(
         className="volScalarField", objectName="omega")
     dims = GenerationUtils.createDimensions(M=0, L=0, T=-1)
@@ -440,7 +440,7 @@ def create_omega_file(meshSettings: MeshSettings, boundaryConditions: BoundaryCo
     return omega_file
 
 
-def create_epsilon_file(meshSettings: MeshSettings, boundaryConditions: BoundaryConditions, nu=1.0e-5):
+def create_epsilon_file(meshSettings: SnappyHexMeshSettings, boundaryConditions: BoundaryConditions, nu=1.0e-5):
     header = GenerationUtils.createFoamHeader(
         className="volScalarField", objectName="epsilon")
     dims = GenerationUtils.createDimensions(M=0, L=2, T=-3)
@@ -510,7 +510,7 @@ def create_epsilon_file(meshSettings: MeshSettings, boundaryConditions: Boundary
     """
 
     for geometry_name, geometry in meshSettings.geometry.items():
-        if (geometry.type == 'triSurfaceMesh'):
+        if (isinstance(geometry, TriSurfaceMeshGeometry)):
             if (geometry.purpose == 'wall'):
                 epsilon_file += f"""
     "{geometry_name[:-4]}.*"
@@ -552,7 +552,7 @@ def create_epsilon_file(meshSettings: MeshSettings, boundaryConditions: Boundary
     return epsilon_file
 
 
-def create_nut_file(meshSettings: MeshSettings, boundaryConditions: BoundaryConditions):
+def create_nut_file(meshSettings: SnappyHexMeshSettings, boundaryConditions: BoundaryConditions):
     header = GenerationUtils.createFoamHeader(
         className="volScalarField", objectName="nut")
     dims = GenerationUtils.createDimensions(M=0, L=2, T=-1)
@@ -613,7 +613,7 @@ def create_nut_file(meshSettings: MeshSettings, boundaryConditions: BoundaryCond
     """
 
     for geometry_name, geometry in meshSettings.geometry.items():
-        if (geometry.type == 'triSurfaceMesh'):
+        if (isinstance(geometry, TriSurfaceMeshGeometry)):
             if (geometry.purpose == 'wall'):
                 nut_file += f"""
     "{geometry_name[:-4]}.*"
@@ -656,7 +656,7 @@ def update_boundary_conditions(boundaryConditions: BoundaryConditions, inletValu
     return boundaryConditions
 
 
-def create_boundary_conditions(meshSettings: MeshSettings, boundaryConditions: BoundaryConditions, nu=1.e-5):
+def create_boundary_conditions(meshSettings: SnappyHexMeshSettings, boundaryConditions: BoundaryConditions, nu=1.e-5):
     """
     Create boundary condition files for an OpenFOAM pimpleFoam simulation.
 
@@ -688,7 +688,7 @@ def create_boundary_conditions(meshSettings: MeshSettings, boundaryConditions: B
 
 
 if __name__ == '__main__':
-    meshSettings = MeshSettings.model_validate(
+    meshSettings = SnappyHexMeshSettings.model_validate(
         AmpersandUtils.yaml_to_dict("examples/basic/meshSettings.yaml")
     )
     create_boundary_conditions(meshSettings, boundaryConditions)

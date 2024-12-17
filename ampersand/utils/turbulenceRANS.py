@@ -17,47 +17,10 @@
  */
 """
 
-# this consists of the class TurbulenceRANS, to compute RANS turbulence boundary conditions
-
-
-# available turbulence models: kOmegaSST, kEpsilon, SpalartAllmaras
-class TurbulenceRANS:
-    def __init__(self,U=1.0,nu=1.0,rho=1.0,L=1.0):
-        self.mesh = None
-        self.nu = None
-        self.k = None
-        self.epsilon = None
-        self.omega = None
-        self.U = U
-        self.rho = rho
-        self.L = L
-        self.Re = U*L/nu
-
-
-        self.I = None # turbulence intensity
-        # Constants
-        self.Cmu = 0.09
-        self.sigma_k = 1.0
-        self.sigma_epsilon = 1.3
-        self.C1 = 1.44
-        self.C2 = 1.92
-        self.kappa = 0.41
-    
-    def set_intensity(self, intensity):
-        self.I = intensity
-
-    def calc_intensity(self):
-        self.I = 0.16*self.Re**(-1./8.)
-
-
-    def calc_k(self):
-        if self.I is None:
-            raise ValueError("Turbulence intensity (I) is not set.")
-        self.k = 1.5*(self.U*self.I)**2
 
 # input: U, nu, turbulence intensity, eddy viscosity ratio
 # output: k, epsilon, omega
-def kEpsilon(U: float, nu: float, I: float = 0.16, nu_t_ratio: float = 1.0) -> tuple[float, float, float]:
+def kEpsilon(U: float, nu: float, I: float = 0.16) -> tuple[float, float, float]:
     k = 1.5 * (U * I) ** 2
     epsilon = 1.5 * k ** 1.5 / (0.09 * nu)
     omega = 0.09 * k / epsilon
@@ -79,7 +42,7 @@ def calc_length_scale(D: float) -> float:
 
 # calculate turbulent length scale for channel flow
 # input: channel width (W), channel depth (H)
-def calc_length_scale_channel(U: float, nu: float, W: float, H: float) -> float:
+def calc_length_scale_channel(W: float, H: float) -> float:
     A = W * H
     P = 2 * (W + H)
     D = 4 * A / P
