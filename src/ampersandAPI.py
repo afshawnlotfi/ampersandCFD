@@ -19,29 +19,28 @@
 
 # This is a collection of Ampersand wrapper functions to be used by the external programs
 # These functions can be called as API functions by the external programs like SplashFOAM
-# 
-# Author: THAW TAR 
+#
+# Author: THAW TAR
 
 
-from project import ampersandProject
-from primitives import ampersandPrimitives, ampersandIO
-from headers import get_ampersand_header
+from project import AmpersandProject
+from src.primitives import ampersandIO
 import os
 
+
 def open_project(project_path):
-    project = ampersandProject()
+    project = AmpersandProject()
     # Clear the screen
     os.system('cls' if os.name == 'nt' else 'clear')
-    ampersandIO.printMessage(get_ampersand_header())
-    
+
     projectFound = project.set_project_path(project_path)
     ampersandIO.printMessage(f"Project path: {project.project_path}")
-    if projectFound==-1:
+    if projectFound == -1:
         ampersandIO.printError("No project found. Exiting the program")
         return -1
     ampersandIO.printMessage("Loading the project")
     project.go_inside_directory()
-    
+
     project.load_settings()
     project.check_0_directory()
     ampersandIO.printMessage("Project loaded successfully")

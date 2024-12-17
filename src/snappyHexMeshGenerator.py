@@ -1,3 +1,4 @@
+# %%
 """
 -------------------------------------------------------------------------------
   ***    *     *  ******   *******  ******    *****     ***    *     *  ******   
@@ -17,9 +18,11 @@
  */
 """
 
-from constants import meshSettings
-from primitives import ampersandPrimitives
-def generate_snappyHexMeshDict(meshSettings):
+from src.constants import meshSettings
+from src.primitives import ampersandPrimitives
+
+
+def generate_snappyHexMeshDict(meshSettings: dict):
     """
     Create a snappyHexMeshDict for OpenFOAM.
 
@@ -32,8 +35,8 @@ def generate_snappyHexMeshDict(meshSettings):
     str: The content of the snappyHexMeshDict file as a string.
     """
     snappyHexMeshDict = f""
-    trueFalse = {True: "true", False: "false"}
-    header = ampersandPrimitives.createFoamHeader(className="dictionary", objectName="snappyHexMeshDict")
+    header = ampersandPrimitives.createFoamHeader(
+        className="dictionary", objectName="snappyHexMeshDict")
 
     steps = f"""
 castellatedMesh {meshSettings['snappyHexSteps']['castellatedMesh']};
@@ -48,7 +51,7 @@ addLayers       {meshSettings['snappyHexSteps']['addLayers']};"""
     for an_entry in meshSettings['geometry']:
         # For STL surfaces, featureEdges and refinementSurfaces are added
         maxRefinementLevel = max(maxRefinementLevel, an_entry['refineMax'])
-        if(an_entry['type'] == 'triSurfaceMesh'):
+        if (an_entry['type'] == 'triSurfaceMesh'):
             added_geo = f"""\n
     {an_entry['name']}
     {{
@@ -63,16 +66,16 @@ addLayers       {meshSettings['snappyHexSteps']['addLayers']};"""
         }}
     }}"""
             # Add features and refinement surfaces
-            if(an_entry['featureEdges']):
+            if (an_entry['featureEdges']):
                 features += f"""
-                
+
         {{
             file \"{an_entry['name'][:-4]}.eMesh\";
             level {an_entry['featureLevel']};
         }}"""
-            if(an_entry['purpose'] == 'inlet' or an_entry['purpose'] == 'outlet'):
+            if (an_entry['purpose'] == 'inlet' or an_entry['purpose'] == 'outlet'):
                 patchType = 'patch'
-                refinementSurfaces+= f"""
+                refinementSurfaces += f"""
         {an_entry['name'][:-4]}
         {{
             level (0 0);
@@ -86,12 +89,12 @@ addLayers       {meshSettings['snappyHexSteps']['addLayers']};"""
                         type {patchType};
                     }}
                 }}
-            }} 
-        }}""" 
-            elif(an_entry['purpose'] == 'cellZone'):
+            }}
+        }}"""
+            elif (an_entry['purpose'] == 'cellZone'):
                 patchType = 'cellZone'
-                if an_entry['property'][1] == True: # patches will be added
-                    refinementSurfaces+= f"""
+                if an_entry['property'][1] == True:  # patches will be added
+                    refinementSurfaces += f"""
         {an_entry['name'][:-4]}
         {{
             level (0 0);
@@ -101,23 +104,23 @@ addLayers       {meshSettings['snappyHexSteps']['addLayers']};"""
             boundary internal;
             faceType boundary;
         }}"""
-                else: # no patches. Just cellZone
-                    refinementSurfaces+= f"""
+                else:  # no patches. Just cellZone
+                    refinementSurfaces += f"""
         {an_entry['name'][:-4]}
         {{
             level (0 0);
             cellZone {an_entry['name'][:-4]};
             faceZone {an_entry['name'][:-4]};
             cellZoneInside inside;
-            boundary internal; 
-        }}""" 
+            boundary internal;
+        }}"""
                 # if refinementSurface or region, do not add here
-            elif(an_entry['purpose'] == 'refinementRegion' or an_entry['purpose'] == 'refinementSurface'):
+            elif (an_entry['purpose'] == 'refinementRegion' or an_entry['purpose'] == 'refinementSurface'):
                 pass
 
-            elif(an_entry['purpose'] == 'baffle'):
+            elif (an_entry['purpose'] == 'baffle'):
                 patchType = 'wall'
-                refinementSurfaces+= f"""
+                refinementSurfaces += f"""
         {an_entry['name'][:-4]}
         {{
             level (0 0);
@@ -131,10 +134,10 @@ addLayers       {meshSettings['snappyHexSteps']['addLayers']};"""
                 }}
             }}
         }}"""
-                
+
             else:
                 patchType = 'wall'
-                refinementSurfaces+= f"""
+                refinementSurfaces += f"""
         {an_entry['name'][:-4]}
         {{
             level (0 0);
@@ -148,11 +151,11 @@ addLayers       {meshSettings['snappyHexSteps']['addLayers']};"""
                         type {patchType};
                     }}
                 }}
-            }} 
-        }}""" 
+            }}
+        }}"""
 
         # For searchable boxes, min and max are added
-        elif(an_entry['type'] == 'searchableBox'):
+        elif (an_entry['type'] == 'searchableBox'):
             added_geo = f"""
     {an_entry['name']}
     {{
@@ -162,45 +165,44 @@ addLayers       {meshSettings['snappyHexSteps']['addLayers']};"""
     }}"""
         geometry += added_geo
     geometry += f"""
-    
+
 }}"""
 
-    
     refinementRegions = f""
     for an_entry in meshSettings['geometry']:
-        if(an_entry['type'] == 'searchableBox'):
+        if (an_entry['type'] == 'searchableBox'):
             refinementRegions += f"""
         {an_entry['name']}
         {{
             mode inside;
-            levels ((1E15 {an_entry['refineMax']})); 
+            levels ((1E15 {an_entry['refineMax']}));
         }}"""
-        elif(an_entry['type'] == 'triSurfaceMesh'):
-            if(an_entry['purpose'] == 'refinementSurface'):
+        elif (an_entry['type'] == 'triSurfaceMesh'):
+            if (an_entry['purpose'] == 'refinementSurface'):
                 refinementRegions += f"""
         {an_entry['name'][:-4]}
         {{
             mode distance;
-            levels ((1E-4 {an_entry['property']})); 
+            levels ((1E-4 {an_entry['property']}));
         }}"""
-            elif(an_entry['purpose'] == 'refinementRegion'):
+            elif (an_entry['purpose'] == 'refinementRegion'):
                 refinementRegions += f"""
         {an_entry['name'][:-4]}
         {{
             mode inside;
-            levels ((1E15 {an_entry['property']})); 
+            levels ((1E15 {an_entry['property']}));
         }}"""
-            elif(an_entry['purpose'] == 'cellZone'):
+            elif (an_entry['purpose'] == 'cellZone'):
                 refinementRegions += f"""
         {an_entry['name'][:-4]}
         {{
             mode inside;
-            levels ((1E15 {an_entry['property'][0]})); 
+            levels ((1E15 {an_entry['property'][0]}));
         }}"""
-            
+
         else:
             pass
-    
+
     castellatedMeshControls = f"""\ncastellatedMeshControls
 {{
     maxLocalCells {meshSettings['castellatedMeshControls']['maxLocalCells']};
@@ -224,7 +226,7 @@ addLayers       {meshSettings['snappyHexSteps']['addLayers']};"""
     locationInMesh ({meshSettings['castellatedMeshControls']['locationInMesh'][0]} {meshSettings['castellatedMeshControls']['locationInMesh'][1]} {meshSettings['castellatedMeshControls']['locationInMesh'][2]});
     allowFreeStandingZoneFaces {meshSettings['castellatedMeshControls']['allowFreeStandingZoneFaces']};
 }}"""
-    
+
     snapControls = f"""\nsnapControls
 {{
     nSmoothPatch {meshSettings['snapControls']['nSmoothPatch']};
@@ -242,20 +244,20 @@ addLayers       {meshSettings['snappyHexSteps']['addLayers']};"""
     layers
     {{"""
     for an_entry in meshSettings['geometry']:
-        if(an_entry['type'] == 'triSurfaceMesh'):
-            if(an_entry['purpose'] == 'wall'): # If the surface is a wall, add layers
+        if (an_entry['type'] == 'triSurfaceMesh'):
+            if (an_entry['purpose'] == 'wall'):  # If the surface is a wall, add layers
                 layerControls += f"""
             "{an_entry['name'][:-4]}.*"
             {{
                 nSurfaceLayers {an_entry['nLayers']};
             }}"""
-            elif(an_entry['purpose'] == 'baffle'): # If the surface is a baffle, add layers
+            elif (an_entry['purpose'] == 'baffle'):  # If the surface is a baffle, add layers
                 layerControls += f"""
             "{an_entry['name'][:-4]}.*"
             {{
                 nSurfaceLayers {1};
             }}"""
-            elif(an_entry['purpose'] == 'cellZone'):
+            elif (an_entry['purpose'] == 'cellZone'):
                 layerControls += f"""
             "{an_entry['name'][:-4]}.*"
             {{
@@ -309,20 +311,22 @@ writeFlags
 );
 debug {meshSettings['debug']};
 mergeTolerance {meshSettings['mergeTolerance']};"""
-    snappyHexMeshDict += header+steps+geometry+castellatedMeshControls+snapControls+layerControls+meshQualityControls+debug
-    #print(snappyHexMeshDict)
+    snappyHexMeshDict += header+steps+geometry+castellatedMeshControls + \
+        snapControls+layerControls+meshQualityControls+debug
+    # print(snappyHexMeshDict)
     return snappyHexMeshDict
 
-def write_snappyHexMeshDict(snappyHexMeshDict):
+
+def write_snappyHexMeshDict(snappyHexMeshDict: dict):
     with open('snappyHexMeshDict', 'w') as file:
         file.write(snappyHexMeshDict)
-   
+
+
 # Example usage
 if __name__ == "__main__":
-    meshSettings = ampersandPrimitives.yaml_to_dict("meshSettings.yaml")
-
-
     snappy_hex_mesh_dict_content = generate_snappyHexMeshDict(meshSettings)
-    with open("snappyHexMeshDict", "w") as f:
+    with open("outputs/snappyHexMeshDict", "w") as f:
         f.write(snappy_hex_mesh_dict_content)
     print("snappyHexMeshDict file created.")
+
+# %%

@@ -18,17 +18,19 @@
 """
 
 import yaml
-from primitives import ampersandPrimitives
-from constants import meshSettings
+from src.primitives import ampersandPrimitives
+from src.constants import meshSettings
+
 
 def create_surfaceFeatureExtractDict(meshSettings):
-    header = ampersandPrimitives.createFoamHeader(className="dictionary", objectName="surfaceFeatureExtractDict")
+    header = ampersandPrimitives.createFoamHeader(
+        className="dictionary", objectName="surfaceFeatureExtractDict")
     surfaceFeatureExtractDict = f""+header
     for anEntry in meshSettings['geometry']:
         if anEntry['type'] == 'triSurfaceMesh':
             surfaceFeature = f"""\n{anEntry['name']}
 {{
-    extractionMethod    extractFromSurface; 
+    extractionMethod    extractFromSurface;
     includedAngle   170;
     subsetFeatures
     {{
@@ -39,7 +41,6 @@ def create_surfaceFeatureExtractDict(meshSettings):
     writeSets           no;
 }}"""
             surfaceFeatureExtractDict += surfaceFeature
-    
 
     return surfaceFeatureExtractDict
 
@@ -47,6 +48,6 @@ def create_surfaceFeatureExtractDict(meshSettings):
 if __name__ == "__main__":
     meshSettings = ampersandPrimitives.yaml_to_dict('meshSettings.yaml')
     surfaceFeatureExtractDict = create_surfaceFeatureExtractDict(meshSettings)
-    #print(surfaceFeatureExtractDict)
+    # print(surfaceFeatureExtractDict)
     with open('surfaceFeatureExtractDict', 'w') as file:
         file.write(surfaceFeatureExtractDict)

@@ -18,14 +18,14 @@
 """
 
 import matplotlib.pyplot as plt
-import numpy as np
 import time
-from project import ampersandProject
-from primitives import ampersandPrimitives, ampersandIO
-from headers import get_ampersand_header
+from src.project import AmpersandProject
+from src.primitives import ampersandPrimitives, ampersandIO
 import os
 
 # this code is to watch the simulation convergence
+
+
 def watch_residuals(logfile):
     # read the log file
     with open(logfile) as f:
@@ -38,7 +38,7 @@ def watch_residuals(logfile):
     k_ = []
     epsilon_ = []
     omega_ = []
-    #newTimeStep = False
+    # newTimeStep = False
     Ux_added = False
     Uy_added = False
     Uz_added = False
@@ -48,11 +48,10 @@ def watch_residuals(logfile):
     omega_added = False
 
     for line in lines:
-        
 
         if 'Time = ' in line:
-            #newTimeStep = True # this is a new time step
-            #print("Started new time step")
+            # newTimeStep = True # this is a new time step
+            # print("Started new time step")
             # reset the flags
             Ux_added = False
             Uy_added = False
@@ -103,7 +102,7 @@ def watch_residuals(logfile):
     plt.savefig('residuals.png')
     plt.show()
     # save the figure
-    
+
 
 # to watch the field values
 def watch_field(U_file, p_file):
@@ -135,18 +134,19 @@ def watch_field(U_file, p_file):
     plt.plot(Uy, label='Uy')
     plt.plot(Uz, label='Uz')
     plt.legend()
-    
+
     # save the figure
     plt.savefig('U_probe.png')
     plt.show()
     # plot the field values
-    #plt.figure()
+    # plt.figure()
     plt.plot(Ux, label='p')
     plt.legend()
-    
+
     # save the figure
     plt.savefig('p_probe.png')
     plt.show()
+
 
 def watch_forces(force_file):
     # read the log file
@@ -158,7 +158,6 @@ def watch_forces(force_file):
     Fy = []
     Fz = []
 
-    
     for line in lines:
         if '#' not in line:
             time.append(float(line.split()[0]))
@@ -166,38 +165,38 @@ def watch_forces(force_file):
             Fy.append(float(line.split()[2]))
             Fz.append(float(line.split()[3]))
 
-
     # plot the field values
     plt.figure()
     plt.plot(time, Fx, label='Fx')
     plt.plot(time, Fy, label='Fy')
     plt.plot(time, Fz, label='Fz')
     plt.legend()
-    
+
     # save the figure
     plt.savefig('forces.png')
     plt.show()
+
 
 def watch_residuals_live(logfile, interval=500):
     while True:
         watch_residuals(logfile)
         time.sleep(interval)
 
-            
+
 def watch_sim():
-    project = ampersandProject()
+    project = AmpersandProject()
     # Clear the screen
     os.system('cls' if os.name == 'nt' else 'clear')
-    ampersandIO.printMessage(get_ampersand_header())
     ampersandIO.printMessage("Please select the project directory to open")
-    projectFound = project.set_project_path(ampersandPrimitives.ask_for_directory())
+    projectFound = project.set_project_path(
+        ampersandPrimitives.ask_for_directory())
     ampersandIO.printMessage(f"Project path: {project.project_path}")
-    if projectFound==-1:
+    if projectFound == -1:
         ampersandIO.printError("No project found. Exiting the program")
         return -1
     ampersandIO.printMessage("Loading the project")
     project.go_inside_directory()
-    
+
     project.load_settings()
     project.check_0_directory()
     ampersandIO.printMessage("Project loaded successfully")
@@ -210,8 +209,9 @@ def watch_sim():
         watch_forces('postProcessing/forces/0/force.dat')
     return 0
 
+
 if __name__ == '__main__':
     watch_sim()
-    #watch_residuals('log.simpleFoam')
-    #watch_field('U', 'p')
-    #watch_residuals_live('log.simpleFoam', 1)
+    # watch_residuals('log.simpleFoam')
+    # watch_field('U', 'p')
+    # watch_residuals_live('log.simpleFoam', 1)

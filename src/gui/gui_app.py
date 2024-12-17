@@ -18,7 +18,7 @@
 """
 
 # this is the starting point of the application
-from ampersandCFD.src.gui_core import ampersand
+from src.gui.gui_core import ampersand
 
 def main(server=None, **kwargs):
     app = ampersand(server)

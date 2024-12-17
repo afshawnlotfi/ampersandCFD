@@ -35,7 +35,7 @@ class mainWindow(QMainWindow):
         self.load_ui()
     
     def load_ui(self):
-        ui_file = QFile("ampersandInputForm.ui")
+        ui_file = QFile("qfiles/ampersandInputForm.ui")
         ui_file.open(QFile.ReadOnly)
         self.window = loader.load(ui_file, None)
         ui_file.close()

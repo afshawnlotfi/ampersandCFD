@@ -17,53 +17,58 @@
  */
 """
 
-import os
 import yaml
 import sys
 from tkinter import filedialog, Tk
-from headers import get_ampersand_header
+
+from src.headers import AMPERSAND_HEADER
 try:
     from PySide6.QtWidgets import QMessageBox
-    from dialogBoxes import sphereDialogDriver, inputDialogDriver, vectorInputDialogDriver
+    from src.gui.dialogBoxes import inputDialogDriver, vectorInputDialogDriver
 except:
     pass
+
+
 class ampersandPrimitives:
     def __init__(self):
         pass
-    
-    
-    
+
     @staticmethod
     def list_stl_files(stl_files, GUIMode=False, window=None):
         if GUIMode:
             stl_names = [stl_file['name'] for stl_file in stl_files]
-            #window.listWidgetObjList.clear()
+            # window.listWidgetObjList.clear()
             for i in range(len(stl_names)):
-                ampersandIO.printMessage(f"{i+1}. {stl_names[i]}",GUIMode=GUIMode,window=window) 
+                ampersandIO.printMessage(
+                    f"{i+1}. {stl_names[i]}", GUIMode=GUIMode, window=window)
             return 0
         i = 1
         ampersandIO.show_title("STL Files")
-        
-        ampersandIO.printMessage(f"{'No.':<5}{'Name':<20}{'Purpose':<20}{'RefineMent':<15}{'Property':<15}")
+
+        ampersandIO.printMessage(f"{'No.':<5}{'Name':<20}{'Purpose':<20}{
+                                 'RefineMent':<15}{'Property':<15}")
         for stl_file in stl_files:
-            if(stl_file['property']==None):
+            if (stl_file['property'] == None):
                 stl_property = "None"
                 if stl_file['purpose'] == 'wall':
                     stl_property = f"nLayers: {stl_file['nLayers']}"
                 else:
                     stl_property = "None"
-                #stl_file['property'] = "None"
+                # stl_file['property'] = "None"
             elif isinstance(stl_file['property'], list):
-                stl_property = f"[{stl_file['property'][0]} {stl_file['property'][1]} {stl_file['property'][2]}]"
+                stl_property = f"[{stl_file['property'][0]} {
+                    stl_file['property'][1]} {stl_file['property'][2]}]"
             elif isinstance(stl_file['property'], tuple):
                 if stl_file['purpose'] == 'inlet':
-                    stl_property = f"U: [{stl_file['property'][0]} {stl_file['property'][1]} {stl_file['property'][2]}]"
+                    stl_property = f"U: [{stl_file['property'][0]} {
+                        stl_file['property'][1]} {stl_file['property'][2]}]"
                 elif stl_file['purpose'] == 'cellZone':
                     stl_property = f"Refinement: {stl_file['property'][0]}"
-                #stl_property = f"[{stl_file['property'][0]} {stl_file['property'][1]} {stl_file['property'][2]}]"
+                # stl_property = f"[{stl_file['property'][0]} {stl_file['property'][1]} {stl_file['property'][2]}]"
             else:
                 stl_property = stl_file['property']
-            ampersandIO.printMessage(f"{i:<5}{stl_file['name']:<20}{stl_file['purpose']:<20}({stl_file['refineMin']} {stl_file['refineMax']}{')':<11}{stl_property:<15}")
+            ampersandIO.printMessage(f"{i:<5}{stl_file['name']:<20}{stl_file['purpose']:<20}({
+                                     stl_file['refineMin']} {stl_file['refineMax']}{')':<11}{stl_property:<15}")
             i += 1
         ampersandIO.show_line()
         return 0
@@ -73,7 +78,8 @@ class ampersandPrimitives:
         i = 1
         boundaries = []
         ampersandIO.show_title("Boundary Conditions")
-        ampersandIO.printMessage(f"{'No.':<5}{'Name':<20}{'Purpose':<20}{'Value':<15}")
+        ampersandIO.printMessage(f"{'No.':<5}{'Name':<20}{
+                                 'Purpose':<20}{'Value':<15}")
         # for external flows, show the boundary conditions for domain first
         if meshSettings['internalFlow'] == False:
             for patchName in meshSettings['bcPatches'].keys():
@@ -81,33 +87,38 @@ class ampersandPrimitives:
                 if patch['property'] == None:
                     property = "None"
                 elif isinstance(patch['property'], list):
-                    property = f"[{patch['property'][0]} {patch['property'][1]} {patch['property'][2]}]"
+                    property = f"[{patch['property'][0]} {
+                        patch['property'][1]} {patch['property'][2]}]"
                 elif isinstance(patch['property'], tuple):
-                    property = f"[{patch['property'][0]} {patch['property'][1]} {patch['property'][2]}]"
+                    property = f"[{patch['property'][0]} {
+                        patch['property'][1]} {patch['property'][2]}]"
                 else:
                     property = patch['property']
-                #ampersandIO.printMessage(f"{patch['name']}: {patch['purpose']}\t{patch['property']}")
-                ampersandIO.printMessage(f"{i:<5}{patchName:<20}{patch['purpose']:<20}{property:<15}")
+                # ampersandIO.printMessage(f"{patch['name']}: {patch['purpose']}\t{patch['property']}")
+                ampersandIO.printMessage(f"{i:<5}{patchName:<20}{
+                                         patch['purpose']:<20}{property:<15}")
                 i += 1
                 boundaries.append(patchName)
         for patch in meshSettings['geometry']:
             if patch['purpose'] != 'refinementRegion' and patch['purpose'] != 'refinementSurface':
-                #ampersandIO.printMessage(patch)
+                # ampersandIO.printMessage(patch)
                 if patch['property'] == None:
                     property = "None"
                 elif isinstance(patch['property'], list):
-                    property = f"[{patch['property'][0]} {patch['property'][1]} {patch['property'][2]}]"
+                    property = f"[{patch['property'][0]} {
+                        patch['property'][1]} {patch['property'][2]}]"
                 elif isinstance(patch['property'], tuple):
-                    property = f"[{patch['property'][0]} {patch['property'][1]} {patch['property'][2]}]"
+                    property = f"[{patch['property'][0]} {
+                        patch['property'][1]} {patch['property'][2]}]"
                 else:
                     property = "None"
-                ampersandIO.printMessage(f"{i:<5}{patch['name']:<20}{patch['purpose']:<20}{property:<15}")
+                ampersandIO.printMessage(f"{i:<5}{patch['name']:<20}{
+                                         patch['purpose']:<20}{property:<15}")
                 i += 1
                 boundaries.append(patch['name'])
-        return boundaries # return the number of boundarys
-            #ampersandIO.printMessage(f"{patch['name']}: {patch['purpose']}\t{patch['property']}")
+        return boundaries  # return the number of boundarys
+        # ampersandIO.printMessage(f"{patch['name']}: {patch['purpose']}\t{patch['property']}")
 
-    
     @staticmethod
     def change_patch_type(patches, patch_name, new_type='patch'):
         patch_found = False
@@ -131,28 +142,28 @@ class ampersandPrimitives:
             return [ampersandPrimitives.sanitize_yaml(item) for item in data]
         else:
             return data
-        
-    # Function to remove duplicates in a YAML file  
+
+    # Function to remove duplicates in a YAML file
     @staticmethod
     def remove_duplicate_dicts(dict_list):
         seen = set()
         unique_dicts = []
         for d in dict_list:
             # Convert dictionary to a frozenset of its items to make it hashable
-            #print(d)
+            # print(d)
             dict_tuple = frozenset(d.items())
             if dict_tuple not in seen:
                 seen.add(dict_tuple)
                 unique_dicts.append(d)
         return unique_dicts
-    
+
     @staticmethod
     def treat_bounds(geometry):
         for anObject in geometry:
             ampersandPrimitives.list_to_tuple_dict(anObject)
-            #print(anObject)
+            # print(anObject)
         return geometry
-    
+
     # Function to convert a list to a tuple inside a dictionary
     @staticmethod
     def list_to_tuple_dict(data):
@@ -162,7 +173,6 @@ class ampersandPrimitives:
             elif isinstance(value, list):
                 data[key] = tuple(value)
         return data
-
 
     @staticmethod
     def crlf_to_LF(file_path):
@@ -174,35 +184,40 @@ class ampersandPrimitives:
         with open(file_path, 'wb') as f:
             f.write(content)
 
-
     @staticmethod
     def ask_for_directory(qt=False):
         try:
             if qt:
                 from PySide6.QtWidgets import QFileDialog
-                directory = QFileDialog.getExistingDirectory(None, "Select Project Directory")
+                directory = QFileDialog.getExistingDirectory(
+                    None, "Select Project Directory")
                 return directory if directory else None
             else:
                 root = Tk()
                 root.withdraw()  # Hide the main window
-                directory = filedialog.askdirectory(title="Select Project Directory")
+                directory = filedialog.askdirectory(
+                    title="Select Project Directory")
                 return directory if directory else None
         except:
-            return ampersandIO.get_input("Select Project Directory: ")    
+            return ampersandIO.get_input("Select Project Directory: ")
+
     @staticmethod
     def ask_for_file(filetypes=[("STL Geometry", "*.stl")], qt=False):
         try:
             if qt:
                 from PySide6.QtWidgets import QFileDialog
-                file = QFileDialog.getOpenFileName(None, "Select File", filter="STL Geometry (*.stl)")
+                file = QFileDialog.getOpenFileName(
+                    None, "Select File", filter="STL Geometry (*.stl)")
                 return file[0] if file[0] else None
             else:
                 root = Tk()
                 root.withdraw()
-                file = filedialog.askopenfilename(title="Select File", filetypes=filetypes)
+                file = filedialog.askopenfilename(
+                    title="Select File", filetypes=filetypes)
                 return file if file else None
         except:
-            return ampersandIO.get_input("Select file: ")    
+            return ampersandIO.get_input("Select file: ")
+
     @staticmethod
     def check_dict(dict_):
         # check every elements of the dictionary and whether there are tuples
@@ -226,12 +241,11 @@ class ampersandPrimitives:
         - data (dict): The dictionary to be converted.
         - output_file (str): The name of the output YAML file.
         """
-        #data = ampersandPrimitives.check_dict(data)
+        # data = ampersandPrimitives.check_dict(data)
         data = ampersandPrimitives.sanitize_yaml(data)
         with open(output_file, 'w') as file:
             yaml.dump(data, file, default_flow_style=False, sort_keys=False)
-        #print(f"YAML file '{output_file}' has been created.")
-
+        # print(f"YAML file '{output_file}' has been created.")
 
     @staticmethod
     def yaml_to_dict(input_file):
@@ -256,14 +270,12 @@ class ampersandPrimitives:
             else:
                 exit()
             return None
-        
 
     @staticmethod
     # This file contains the basic primitives used in the generation of OpenFOAM casefiles
-    def createFoamHeader(className="dictionary",objectName="blockMeshDict"):
-        header = get_ampersand_header()
+    def createFoamHeader(className="dictionary", objectName="blockMeshDict"):
         header = f"""/*--------------------------------*- C++ -*----------------------------------*\\
-{header}
+{AMPERSAND_HEADER}
 This file is part of OpenFOAM casefiles automatically generated by AmpersandCFD*/
 
 FoamFile
@@ -276,23 +288,24 @@ FoamFile
         return header
 
     @staticmethod
-    def createDimensions(M=1,L=1,T=1):
+    def createDimensions(M=1, L=1, T=1):
         return f"\ndimensions      [{M} {L} {T} 0 0 0 0];"
-    
+
     @staticmethod
-    def createInternalFieldScalar(type="uniform",value=0):
+    def createInternalFieldScalar(type="uniform", value=0):
         return f"""\ninternalField   {type} {value};"""
-    
+
     @staticmethod
-    def createInternalFieldVector(type="uniform",value=[0,0,0]):
+    def createInternalFieldVector(type="uniform", value=[0, 0, 0]):
         return f"""\ninternalField   {type} ({value[0]} {value[1]} {value[2]});"""
 
     @staticmethod
     def write_to_file(filename, content):
         with open(filename, 'w') as f:
             f.write(content)
+
     @staticmethod
-    def createScalarFixedValue(patch_name="inlet",value=0):
+    def createScalarFixedValue(patch_name="inlet", value=0):
         return f"""\n{patch_name}
         {{
             type            fixedValue;
@@ -307,12 +320,12 @@ FoamFile
         }};"""
 
     @staticmethod
-    def createVectorFixedValue(patch_name="inlet",value=[0,0,0]):
+    def createVectorFixedValue(patch_name="inlet", value=[0, 0, 0]):
         return f"""\n{patch_name}
         {{
             type            fixedValue;
             value           uniform ("{value[0]} {value[1]} {value[2]})";
-        }};""" 
+        }};"""
 
     @staticmethod
     def createVectorZeroGradient(patch_name="inlet"):
@@ -320,7 +333,7 @@ FoamFile
         {{
             type            zeroGradient;
         }};"""
-    
+
     @staticmethod
     def write_dict_to_file(filename, content):
         try:
@@ -333,18 +346,19 @@ FoamFile
     # to remove duplicates from a list
     def remove_duplicates(lst):
         return list(set(lst))
-    
+
     @staticmethod
     def calc_Umag(U):
         return sum([u**2 for u in U])**0.5
+
 
 class ampersandIO:
     def __init__(self):
         pass
 
     @staticmethod
-    def printMessage(*args,GUIMode=False,window=None):
-        if GUIMode and window!=None:
+    def printMessage(*args, GUIMode=False, window=None):
+        if GUIMode and window != None:
             window.updateTerminal(*args)
         else:
             print(*args)
@@ -352,7 +366,7 @@ class ampersandIO:
     @staticmethod
     def printWarning(*args, GUIMode=False):
         if GUIMode:
-            #ampersandIO.printMessage(*args)
+            # ampersandIO.printMessage(*args)
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Warning)
             msg.setText("Warning")
@@ -361,11 +375,11 @@ class ampersandIO:
             msg.exec_()
         else:
             print(*args)
-    
+
     @staticmethod
     def printError(*args, GUIMode=False):
         if GUIMode:
-            #ampersandIO.printMessage(*args)
+            # ampersandIO.printMessage(*args)
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Critical)
             msg.setText("Error")
@@ -374,31 +388,32 @@ class ampersandIO:
             msg.exec_()
         else:
             print(*args, file=sys.stderr)
-    
+
     @staticmethod
     def get_input(prompt, GUIMode=False):
         if GUIMode:
             return inputDialogDriver(prompt)
         else:
             return input(prompt)
-    
+
     @staticmethod
     def print_dict(data):
         for key, value in data.items():
             print(f"{key}: {value}")
-    
+
     @staticmethod
     def get_input_int(prompt, GUIMode=False):
         if GUIMode:
             return int(inputDialogDriver(prompt, input_type="int"))
-        else: 
+        else:
             try:
                 return int(input(prompt))
             except:
-                ampersandIO.printError("Invalid input. Please enter an integer.")
+                ampersandIO.printError(
+                    "Invalid input. Please enter an integer.")
                 return ampersandIO.get_input_int(prompt)
-    
-    @staticmethod  
+
+    @staticmethod
     def get_input_float(prompt, GUIMode=False):
         if GUIMode:
             return float(inputDialogDriver(prompt, input_type="float"))
@@ -408,66 +423,68 @@ class ampersandIO:
             except:
                 ampersandIO.printError("Invalid input. Please enter a number.")
                 return ampersandIO.get_input_float(prompt)
-        
+
     @staticmethod
     def show_list(lst):
         i = 1
         for item in lst:
             ampersandIO.printMessage(f"{i}. {item}")
-    
+
     @staticmethod
     def print_numbered_list(lst):
         for i in range(len(lst)):
             print(f"{i+1}. {lst[i]}")
-    
+
     @staticmethod
     def get_input_vector(prompt, GUIMode=False):
         if GUIMode:
             return vectorInputDialogDriver(prompt)
         else:
             inp = input(prompt).split()
-            #output = [0.,0.,0.]
+            # output = [0.,0.,0.]
             # Check if the input is a list of floats
             try:
                 vec = list(map(float, inp))
-                if len(vec)!=3:
-                    ampersandIO.printError("Invalid input. Please enter 3 numbers.")
+                if len(vec) != 3:
+                    ampersandIO.printError(
+                        "Invalid input. Please enter 3 numbers.")
                     # Recursively call the function until a valid input is given
                     return ampersandIO.get_input_vector(prompt)
                 return vec
             except:
-                ampersandIO.printError("Invalid input. Please enter a list of numbers.")
+                ampersandIO.printError(
+                    "Invalid input. Please enter a list of numbers.")
                 # Recursively call the function until a valid input is given
                 return ampersandIO.get_input_vector(prompt)
-        #return list(map(float, input(prompt).split()))
+        # return list(map(float, input(prompt).split()))
 
-    
-    
     @staticmethod
     def get_input_bool(prompt):
         try:
             return input(prompt).lower() in ['y', 'yes', 'true', '1']
         except:
-            ampersandIO.printError("Invalid input. Please enter a boolean value.")
+            ampersandIO.printError(
+                "Invalid input. Please enter a boolean value.")
             return ampersandIO.get_input_bool(prompt)
-       
+
     @staticmethod
-    def get_option_choice(prompt, options,title=None):
+    def get_option_choice(prompt, options, title=None):
         if title:
             ampersandIO.printMessage(title)
         ampersandIO.print_numbered_list(options)
         choice = ampersandIO.get_input_int(prompt)
-        if choice>len(options) or choice<=0:
-            ampersandIO.printError("Invalid choice. Please choose from the given options.")
+        if choice > len(options) or choice <= 0:
+            ampersandIO.printError(
+                "Invalid choice. Please choose from the given options.")
             return ampersandIO.get_option_choice(prompt, options)
         return choice-1
-    
+
     @staticmethod
     def show_title(title):
         total_len = 60
         half_len = (total_len - len(title))//2
         title = "-"*half_len + title + "-"*half_len
-        ampersandIO.printMessage("\n" + title  )
+        ampersandIO.printMessage("\n" + title)
 
     @staticmethod
     def show_line():
@@ -481,66 +498,100 @@ class ampersandIO:
             print(f"{item_name:12}\t{item_value}")
 
 
-class ampersandDataInput:
+class AmpersandDataInput:
     def __init__(self):
         pass
 
     @staticmethod
     def get_inlet_values():
-        U = ampersandIO.get_input_vector("Enter the velocity vector at the inlet (m/s): ")
+        U = ampersandIO.get_input_vector(
+            "Enter the velocity vector at the inlet (m/s): ")
         return U
-    
+
+    @staticmethod
+    def get_purpose():
+        purposes = ['wall', 'inlet', 'outlet', 'refinementRegion', 'refinementSurface',
+                    'cellZone', 'baffles', 'symmetry', 'cyclic', 'empty',]
+        ampersandIO.printMessage(f"Enter purpose for this STL geometry")
+        ampersandIO.print_numbered_list(purposes)
+        purpose_no = ampersandIO.get_input_int("Enter purpose number: ")-1
+        if (purpose_no < 0 or purpose_no > len(purposes)-1):
+            ampersandIO.printMessage(
+                "Invalid purpose number. Setting purpose to wall")
+            purpose = 'wall'
+        else:
+            purpose = purposes[purpose_no]
+        return purpose
+
+    @staticmethod
+    def get_boundary_type():
+        bcTypes = ["inlet", "outlet", "wall",
+                   "symmetry", "cyclic", "empty", "movingWall",]
+        ampersandIO.printMessage("List of boundary types")
+        ampersandIO.print_numbered_list(bcTypes)
+        bcType = ampersandIO.get_input_int(
+            "Enter the number of the boundary type: ")
+        if bcType <= 0 or bcType > len(bcTypes):
+            ampersandIO.printMessage("Invalid boundary type. Setting to wall")
+            return "wall"
+        return bcTypes[bcType-1]
+
     @staticmethod
     def get_physical_properties():
-        rho = ampersandIO.get_input_float("Enter the density of the fluid (kg/m^3): ")
-        nu = ampersandIO.get_input_float("Enter the kinematic viscosity of the fluid (m^2/s): ")
-        return rho, nu
-    
+        rho = ampersandIO.get_input_float(
+            "Enter the density of the fluid (kg/m^3): ")
+        nu = ampersandIO.get_input_float(
+            "Enter the kinematic viscosity of the fluid (m^2/s): ")
+        return {"rho": rho, "nu": nu}
+
     @staticmethod
     def get_turbulence_model():
         turbulence_models = ['kOmegaSST', 'kEpsilon', ]
         ampersandIO.show_title("Turbulence models")
         for i in range(len(turbulence_models)):
             ampersandIO.printMessage(f"{i+1}. {turbulence_models[i]}")
-        turbulence_model = ampersandIO.get_input_int("Choose the turbulence model: ")
-        if turbulence_model>len(turbulence_models) or turbulence_model<=0:
-            ampersandIO.printError("Invalid turbulence model. Defaulting to kOmegaSST.")
+        turbulence_model = ampersandIO.get_input_int(
+            "Choose the turbulence model: ")
+        if turbulence_model > len(turbulence_models) or turbulence_model <= 0:
+            ampersandIO.printError(
+                "Invalid turbulence model. Defaulting to kOmegaSST.")
             turbulence_model = 1
         return turbulence_models[turbulence_model-1]
-    
+
     @staticmethod
     def choose_fluid_properties():
-        fluids = {"Air":{'rho':1.225, 'nu':1.5e-5}, "Water":{'rho':1000, 'nu':1e-6}, }
+        fluids = {"Air": {'rho': 1.225, 'nu': 1.5e-5},
+                  "Water": {'rho': 1000, 'nu': 1e-6}, }
         fluid_names = list(fluids.keys())
         ampersandIO.printMessage("Fluid properties")
         ampersandIO.printMessage("0. Enter fluid properties manually")
         for i in range(len(fluid_names)):
             ampersandIO.printMessage(f"{i+1}. {fluid_names[i]}")
-        fluid_name = ampersandIO.get_input_int("Choose the fluid properties:" )
-        
-        if(fluid_name>len(fluids) or fluid_name<=0):
+        fluid_name = ampersandIO.get_input_int("Choose the fluid properties:")
+
+        if (fluid_name > len(fluids) or fluid_name <= 0):
             ampersandIO.printMessage("Please input fluid properties manually.")
-            rho, nu = ampersandDataInput.get_physical_properties()
-            return {'rho':rho, 'nu':nu}
+            rho, nu = AmpersandDataInput.get_physical_properties()
+            return {'rho': rho, 'nu': nu}
         fluid = fluids[fluid_names[fluid_name-1]]
         return fluid
-    
+
     @staticmethod
     def get_mesh_refinement_level():
-        refLevel = ampersandIO.get_input_int("Enter the mesh refinement (0: coarse, 1: medium, 2: fine): ")
-        if refLevel not in [0,1,2]:
-            ampersandIO.printMessage("Invalid mesh refinement level. Defaulting to medium.")
+        refLevel = ampersandIO.get_input_int(
+            "Enter the mesh refinement (0: coarse, 1: medium, 2: fine): ")
+        if refLevel not in [0, 1, 2]:
+            ampersandIO.printMessage(
+                "Invalid mesh refinement level. Defaulting to medium.")
             refLevel = 1
         return refLevel
-    
 
 
 if __name__ == "__main__":
-    print(ampersandPrimitives.createFoamHeader(className="dictionary",objectName="snappyHexMeshDict"))
-    print(ampersandPrimitives.createDimensions(M=1,L=1,T=1))
-    print(ampersandPrimitives.createScalarFixedValue(patch_name="inlet",value=0))
+    print(ampersandPrimitives.createFoamHeader(
+        className="dictionary", objectName="snappyHexMeshDict"))
+    print(ampersandPrimitives.createDimensions(M=1, L=1, T=1))
+    print(ampersandPrimitives.createScalarFixedValue(patch_name="inlet", value=0))
     print(ampersandPrimitives.createScalarZeroGradient(patch_name="inlet"))
-    print(ampersandPrimitives.createVectorFixedValue(patch_name="inlet",value=[0,0,0]))
-
-
-
+    print(ampersandPrimitives.createVectorFixedValue(
+        patch_name="inlet", value=[0, 0, 0]))

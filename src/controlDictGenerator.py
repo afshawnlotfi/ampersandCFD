@@ -17,12 +17,14 @@
  */
 """
 
-from constants import meshSettings, physicalProperties, numericalSettings, inletValues, boundaryConditions
-from primitives import ampersandPrimitives
-from constants import simulationSettings
+from src.constants import meshSettings, physicalProperties, numericalSettings, inletValues, boundaryConditions
+from src.primitives import ampersandPrimitives
+from src.constants import simulationSettings
+
 
 def createControlDict(simulationSettings):
-    controlDict = ampersandPrimitives.createFoamHeader(className='dictionary', objectName='controlDict')
+    controlDict = ampersandPrimitives.createFoamHeader(
+        className='dictionary', objectName='controlDict')
     controlDict += f"""
 application     {simulationSettings['application']};
 startFrom       {simulationSettings['startFrom']};

@@ -17,29 +17,33 @@
  */
 """
 
-from primitives import ampersandIO
-from create_project import create_project
-from open_project import open_project
-from watch_sim import watch_sim
-#from headers import get_ampersand_header
-#import os
+from src.primitives import ampersandIO
+from src.cli.create_project import create_project
+from src.cli.open_project import open_project
+from src.headers import AMPERSAND_HEADER
+from src.utils.watch_sim import watch_sim
 import argparse
 
+
 def main():
-    parser = argparse.ArgumentParser(description='Ampersand CFD Automation Tool')
-    parser.add_argument('--create', action='store_true', help='Create a new project')
-    parser.add_argument('--open', action='store_true', help='Open an existing project')
-    parser.add_argument('--post', action='store_true', help='Post-process the simulation')
+    parser = argparse.ArgumentParser(
+        description='Ampersand CFD Automation Tool')
+    parser.add_argument('--create', action='store_true',
+                        help='Create a new project')
+    parser.add_argument('--open', action='store_true',
+                        help='Open an existing project')
+    parser.add_argument('--post', action='store_true',
+                        help='Post-process the simulation')
     args = parser.parse_args()
 
-    #os.system('cls' if os.name == 'nt' else 'clear')
-    #ampersandIO.printMessage(get_ampersand_header())
+    ampersandIO.printMessage(AMPERSAND_HEADER)
 
     if args.create:
         try:
             create_project()
         except KeyboardInterrupt:
-            ampersandIO.printMessage("\nKeyboardInterrupt detected! Aborting project creation")
+            ampersandIO.printMessage(
+                "\nKeyboardInterrupt detected! Aborting project creation")
             exit()
         except Exception as error:
             ampersandIO.printError(error)
@@ -47,7 +51,8 @@ def main():
         try:
             open_project()
         except KeyboardInterrupt:
-            ampersandIO.printMessage("\nKeyboardInterrupt detected! Aborting project creation")
+            ampersandIO.printMessage(
+                "\nKeyboardInterrupt detected! Aborting project creation")
             exit()
         except Exception as error:
             ampersandIO.printError(error)
@@ -55,18 +60,19 @@ def main():
         try:
             watch_sim()
         except KeyboardInterrupt:
-            ampersandIO.printMessage("\nKeyboardInterrupt detected! Aborting project creation")
+            ampersandIO.printMessage(
+                "\nKeyboardInterrupt detected! Aborting project creation")
             exit()
         except Exception as error:
             ampersandIO.printError(error)
     else:
-        ampersandIO.printMessage("Please specify an action to perform. Use --help for more information.")
+        ampersandIO.printMessage(
+            "Please specify an action to perform. Use --help for more information.")
         parser.print_help()
 
 
 if __name__ == '__main__':
     # Specify the output YAML file
     main()
-    #open_project()
-    #create_project()
-
+    # open_project()
+    # create_project()

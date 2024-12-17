@@ -24,7 +24,7 @@ class sphereDialog(QDialog):
         self.created = False
     
     def load_ui(self):
-        ui_path = r"C:\Users\Ridwa\Desktop\CFD\01_CFD_Software_Development\ampersandCFD\src\createSphereDialog.ui"
+        ui_path = "qfiles/createSphereDialog.ui"
         ui_file = QFile(ui_path)
         ui_file.open(QFile.ReadOnly)
         self.window = loader.load(ui_file, None)
@@ -69,9 +69,8 @@ class inputDialog(QDialog):
         self.load_ui()
 
     def load_ui(self):
-        ui_path = r"C:\Users\Ridwa\Desktop\CFD\01_CFD_Software_Development\ampersandCFD\src\inputDialog.ui"
+        ui_path = "qfiles/inputDialog.ui"
         ui_file = QFile(ui_path)
-        #ui_file = QFile("inputDialog.ui")
         ui_file.open(QFile.ReadOnly)
         self.window = loader.load(ui_file, None)
         ui_file.close()
@@ -112,9 +111,8 @@ class vectorInputDialog(QDialog):
         self.load_ui()
 
     def load_ui(self):
-        ui_path = r"C:\Users\Ridwa\Desktop\CFD\01_CFD_Software_Development\ampersandCFD\src\vectorInputDialog.ui"
+        ui_path = "qfiles/vectorInputDialog.ui"
         ui_file = QFile(ui_path)
-        #ui_file = QFile("inputDialog.ui")
         ui_file.open(QFile.ReadOnly)
         self.window = loader.load(ui_file, None)
         ui_file.close()
@@ -153,9 +151,8 @@ class STLDialog(QDialog):
         self.load_ui()
 
     def load_ui(self):
-        ui_path = r"C:\Users\Ridwa\Desktop\CFD\01_CFD_Software_Development\ampersandCFD\src\vectorInputDialog.ui"
+        ui_path = "qfiles/vectorInputDialog.ui"
         ui_file = QFile(ui_path)
-        #ui_file = QFile("inputDialog.ui")
         ui_file.open(QFile.ReadOnly)
         self.window = loader.load(ui_file, None)
         ui_file.close()

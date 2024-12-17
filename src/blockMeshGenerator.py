@@ -1,3 +1,4 @@
+# %%
 """
 -------------------------------------------------------------------------------
   ***    *     *  ******   *******  ******    *****     ***    *     *  ******   
@@ -17,10 +18,10 @@
  */
 """
 
-from constants import meshSettings
-from primitives import ampersandPrimitives
+from src.constants import meshSettings
+from src.primitives import ampersandPrimitives
 
-def generate_blockMeshDict(meshSettings):
+def generate_blockMeshDict(meshSettings: dict):
     header = ampersandPrimitives.createFoamHeader(className="dictionary", objectName="blockMeshDict")
     blockMeshDict = header+f"""
 
@@ -75,14 +76,13 @@ mergePatchPairs
 # Generate blockMeshDict
 # read in data to meshSettings from meshSettings.yaml
 if __name__ == "__main__":
-    meshSettings = ampersandPrimitives.yaml_to_dict("meshSettings.yaml")
     blockMeshDict = generate_blockMeshDict(meshSettings)
-
     # Save to file
-    with open("blockMeshDict", "w") as f:
+    with open("outputs/blockMeshDict", "w") as f:
         f.write(blockMeshDict)
-
 
     #print(blockMeshDict)
 
     print("blockMeshDict file created.")
+
+# %%

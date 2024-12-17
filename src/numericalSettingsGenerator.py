@@ -17,11 +17,11 @@
  */
 """
 
-from constants import numericalSettings, solverSettings
-from primitives import ampersandPrimitives
+from src.primitives import ampersandPrimitives
+
 
 def create_algorithmDict(numericalSettings):
-    #header = ampersandPrimitives.createFoamHeader(className="dictionary", objectName="pimpleDict")
+    # header = ampersandPrimitives.createFoamHeader(className="dictionary", objectName="pimpleDict")
     algorithmDict = f""
     algorithmDict += f"""
 PIMPLE
@@ -33,7 +33,7 @@ PIMPLE
     pRefValue {numericalSettings['pimpleDict']['pRefValue']};
     residualControl
     {{
-        "(U|k|omega|epsilon|nut)" 
+        "(U|k|omega|epsilon|nut)"
         {{
             tolerance {numericalSettings['pimpleDict']['residualControl']['U']};
             relTol 0;
@@ -68,7 +68,7 @@ relaxationFactors
     equations
     {{
         U {numericalSettings['relaxationFactors']['U']};
-        
+
         k {numericalSettings['relaxationFactors']['k']};
         omega {numericalSettings['relaxationFactors']['omega']};
         epsilon {numericalSettings['relaxationFactors']['epsilon']};
@@ -82,16 +82,17 @@ relaxationFactors
 """
     return algorithmDict
 
-def create_solverDict(solverSettings,solverName="U"):
-    
+
+def create_solverDict(solverSettings, solverName="U"):
+
     solverDict = f""
-    if(solverName=="p" or solverName=="Phi" or solverName=="p_rgh"):
+    if (solverName == "p" or solverName == "Phi" or solverName == "p_rgh"):
         solverDict += f"""
 {solverName}
 {{
     solver {solverSettings[solverName]['type']};
     smoother {solverSettings[solverName]['smoother']};
-    
+
     agglomerator {solverSettings[solverName]['agglomerator']};
     nCellsInCoarsestLevel {solverSettings[solverName]['nCellsInCoarsestLevel']};
     mergeLevels {solverSettings[solverName]['mergeLevels']};
@@ -116,37 +117,42 @@ def create_solverDict(solverSettings,solverName="U"):
 """
     return solverDict
 
-def create_solverFinalDict(solverSettings,solverName="U"):
-    
+
+def create_solverFinalDict(solverSettings, solverName="U"):
+
     solverDict = f""
     solverDict += f"""
     {solverName}Final
     {{
         ${solverName}
         tolerance {solverSettings[solverName]['tolerance']/100.};
-        relTol 0;  
+        relTol 0;
     }}
     """
     return solverDict
 
-def create_fvSolutionDict(numericalSettings,solverSettings):
-    header = ampersandPrimitives.createFoamHeader(className="dictionary", objectName="fvSolution")
+
+def create_fvSolutionDict(numericalSettings, solverSettings):
+    header = ampersandPrimitives.createFoamHeader(
+        className="dictionary", objectName="fvSolution")
     fvSolutionDict = f""+header
     fvSolutionDict += f"""
 solvers
 {{
     """
     for solver in solverSettings.keys():
-        fvSolutionDict += create_solverDict(solverSettings,solver)
-        fvSolutionDict += create_solverFinalDict(solverSettings,solver)
+        fvSolutionDict += create_solverDict(solverSettings, solver)
+        fvSolutionDict += create_solverFinalDict(solverSettings, solver)
     fvSolutionDict += f"""
 }}
     """
     fvSolutionDict += create_algorithmDict(numericalSettings)
     return fvSolutionDict
 
+
 def create_fvSchemesDict(numericalSettings):
-    header = ampersandPrimitives.createFoamHeader(className="dictionary", objectName="fvSchemes")
+    header = ampersandPrimitives.createFoamHeader(
+        className="dictionary", objectName="fvSchemes")
     fvSchemesDict = f""+header
     fvSchemesDict += f"""
 ddtSchemes
@@ -162,7 +168,7 @@ gradSchemes
 divSchemes
 {{
     default {numericalSettings['divSchemes']['default']};
-    div(phi,U) {numericalSettings['divSchemes']['div(phi,U)']}; 
+    div(phi,U) {numericalSettings['divSchemes']['div(phi,U)']};
     div(phi,k) {numericalSettings['divSchemes']['div(phi,k)']};
     div(phi,omega) {numericalSettings['divSchemes']['div(phi,omega)']};
     div(phi,epsilon) {numericalSettings['divSchemes']['div(phi,epsilon)']};
@@ -191,4 +197,3 @@ wallDist
 }}
 """
     return fvSchemesDict
-
