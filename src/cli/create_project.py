@@ -100,16 +100,12 @@ def create_project():
 
 
 def write_project(project_input: ProjectInputModel):
-
     AmpersandIO.printMessage(f"Creating project at {project_input.project_path}")
-
     project = ProjectService.create_project(project_input.project_path)
-
     project.set_refinement_level(project_input.refinement_level)
 
     
     project.set_flow_type(project_input.is_internal_flow)
-    
     if project_input.on_ground is not None:
         project.set_on_ground(project_input.on_ground)
 
@@ -118,11 +114,12 @@ def write_project(project_input: ProjectInputModel):
     project.set_transient_settings(project_input.is_transient)
     project.set_parallel(project_input.n_core)
     project.set_half_model(project_input.is_half_model)
-    project.set_post_process_settings(project_input.use_function_objects)
-
+    
     for stl_file in project_input.stl_files:
-        project.add_stl_file(stl_file.stl_path, stl_file.purpose)
+            project.add_stl_file(stl_file.stl_path, stl_file.purpose)
 
+    
+    project.set_post_process_settings(project_input.use_function_objects)
 
     project.summarize_project()
     project.write_settings()
@@ -134,7 +131,7 @@ if __name__ == '__main__':
         project_path=Path("/workspaces/ampersandCFD/foamProjects/hello"),
         refinement_level=0,
         on_ground=True,
-        fluid_properties={"rho": 1, "nu": 2},
+        fluid_properties={'rho':1.225, 'nu':1.5e-5},
         inlet_values=(10,0,0),
         n_core=4,
         is_half_model=True,

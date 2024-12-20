@@ -585,8 +585,7 @@ class AmpersandProject:  # ampersandProject class to handle the project creation
         self.useFOs = useFOs
         self.postProcessSettings['FOs'] = useFOs
 
-        meshPoint = list(
-            self.meshSettings['castellatedMeshControls']['locationInMesh'])
+        meshPoint = list(self.meshSettings['castellatedMeshControls']['locationInMesh'])
         self.postProcessSettings['massFlow'] = True
         self.postProcessSettings['minMax'] = True
         self.postProcessSettings['yPlus'] = True
