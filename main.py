@@ -17,7 +17,8 @@
  */
 """
 
-from src.primitives import ampersandIO
+import os
+from src.primitives import AmpersandIO
 from src.cli.create_project import create_project
 from src.cli.open_project import open_project
 from src.headers import AMPERSAND_HEADER
@@ -36,37 +37,40 @@ def main():
                         help='Post-process the simulation')
     args = parser.parse_args()
 
-    ampersandIO.printMessage(AMPERSAND_HEADER)
+    # Clear the screen
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+    AmpersandIO.printMessage(AMPERSAND_HEADER)
 
     if args.create:
         try:
             create_project()
         except KeyboardInterrupt:
-            ampersandIO.printMessage(
+            AmpersandIO.printMessage(
                 "\nKeyboardInterrupt detected! Aborting project creation")
             exit()
         except Exception as error:
-            ampersandIO.printError(error)
+            AmpersandIO.printError(error)
     elif args.open:
         try:
             open_project()
         except KeyboardInterrupt:
-            ampersandIO.printMessage(
+            AmpersandIO.printMessage(
                 "\nKeyboardInterrupt detected! Aborting project creation")
             exit()
         except Exception as error:
-            ampersandIO.printError(error)
+            AmpersandIO.printError(error)
     elif args.post:
         try:
             watch_sim()
         except KeyboardInterrupt:
-            ampersandIO.printMessage(
+            AmpersandIO.printMessage(
                 "\nKeyboardInterrupt detected! Aborting project creation")
             exit()
         except Exception as error:
-            ampersandIO.printError(error)
+            AmpersandIO.printError(error)
     else:
-        ampersandIO.printMessage(
+        AmpersandIO.printMessage(
             "Please specify an action to perform. Use --help for more information.")
         parser.print_help()
 

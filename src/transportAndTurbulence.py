@@ -18,12 +18,12 @@
 """
 
 import yaml
-from src.primitives import ampersandPrimitives
+from src.primitives import AmpersandPrimitives
 from src.constants import meshSettings, physicalProperties
 
 
 def create_transportPropertiesDict(transportProperties):
-    header = ampersandPrimitives.createFoamHeader(
+    header = AmpersandPrimitives.createFoamHeader(
         className="dictionary", objectName="transportProperties")
     transportPropertiesDict = f""+header
     transportProperties_ = f"""
@@ -35,7 +35,7 @@ nu              nu [ 0 2 -1 0 0 0 0 ] {transportProperties['nu']};
 
 
 def create_turbulencePropertiesDict(turbulenceProperties):
-    header = ampersandPrimitives.createFoamHeader(
+    header = AmpersandPrimitives.createFoamHeader(
         className="dictionary", objectName="turbulenceProperties")
     turbulencePropertiesDict = f""+header
     turbulenceProperties_ = f"""

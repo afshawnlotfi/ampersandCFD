@@ -23,9 +23,10 @@
 
 
 import os
+from pathlib import Path
 import shutil
-from typing import Optional
-from src.primitives import ampersandPrimitives, ampersandIO, AmpersandDataInput
+from typing import Optional, Union
+from src.primitives import AmpersandPrimitives, AmpersandIO, AmpersandDataInput
 from src.constants import meshSettings, physicalProperties, numericalSettings, inletValues
 from src.constants import solverSettings, boundaryConditions, simulationSettings, simulationFlowSettings, parallelSettings, postProcessSettings
 from src.utils.stl_analysis import StlAnalysis
@@ -46,16 +47,11 @@ from src.postProcess import postProcess
 
 class AmpersandProject:  # ampersandProject class to handle the project creation and manipulation
     # this class will contain the methods to handle the logic and program flow
-    def __init__(self, GUIMode=False, window=None):
-        # project path = project_directory_path/user_name/project_name
-        self.GUIMode = GUIMode
-        if GUIMode and window != None:
-            self.window = window
-        else:
-            self.window = None
+    def __init__(self, project_path: Union[str, Path]):
+
+        self.project_path = Path(project_path)
         self.current_stl_file = None   # current stl file being processed
         self.project_directory_path = None
-        self.project_name = None
         self.user_name = None
         self.caseSettings = None
         self.meshSettings = None
@@ -69,54 +65,41 @@ class AmpersandProject:  # ampersandProject class to handle the project creation
         self.simulationFlowSettings = None
         self.parallelSettings = None
         self.postProcessSettings = None
-        self.project_path = None
-        self.existing_project = False  # flag to check if the project is already existing
         self.stl_files = []  # list to store the settings for stl files
         self.stl_names = []  # list to store the names of the stl files
         self.internalFlow = False  # default is external flow
         self.on_ground = False  # default is off the ground
         self.halfModel = False  # default is full model
-        self.parallel = True  # default is parallel simulation
-        self.snap = True  # default is to use snappyHexMesh
         self.transient = False  # default is steady state
         self.refinement = 0  # 0: coarse, 1: medium, 2: fine
-        self.characteristicLength = None  # default characteristic length
         self.useFOs = False  # default is not to use function objects
         self.current_modification = None  # current modification to the project settings
         # flag to check if the current working directory is the project directory
-        self.inside_project_directory = False
-        self.mod_options = ["Background Mesh", "Add Geometry", "Refinement Levels", "Mesh Point", "Boundary Conditions", "Fluid Properties", "Numerical Settings",
-                            "Simulation Control Settings", "Turbulence Model", "Post Processing Settings"]
-        self.minX, self.maxX, self.minY, self.maxY, self.minZ, self.maxZ = - \
-            1e-3, 1e-3, -1e-3, 1e-3, -1e-3, 1e-3
+        self.minX, self.maxX, self.minY, self.maxY, self.minZ, self.maxZ = -1e-3, 1e-3, -1e-3, 1e-3, -1e-3, 1e-3
     # --------------------------------------------------------------------
     # Methods to handle the project summary and changes
     # --------------------------------------------------------------------
 
     def summarize_boundary_conditions(self):
-        bcs = ampersandPrimitives.list_boundary_conditions(self.meshSettings)
+        bcs = AmpersandPrimitives.list_boundary_conditions(self.meshSettings)
         return bcs
 
 
 
     def summarize_project(self):
         trueFalse = {True: 'Yes', False: 'No'}
-        ampersandIO.show_title("Project Summary")
-        # ampersandIO.printMessage(f"Project directory: {self.project_directory_path}")
-        ampersandIO.printFormat(
-            "Project name", self.project_name, GUIMode=self.GUIMode, window=self.window)
-        ampersandIO.printFormat(
-            "Project path", self.project_path, GUIMode=self.GUIMode, window=self.window)
+        AmpersandIO.show_title("Project Summary")
 
-        ampersandIO.printMessage(
-            f"Internal Flow: {trueFalse[self.internalFlow]}", GUIMode=self.GUIMode, window=self.window)
+        AmpersandIO.printMessage(
+            f"Internal Flow: {trueFalse[self.internalFlow]}")
         if (self.internalFlow == False):
-            ampersandIO.printMessage(
-                f"On Ground: {trueFalse[self.on_ground]}", GUIMode=self.GUIMode, window=self.window)
-        ampersandIO.printMessage(
-            f"Transient: {trueFalse[self.transient]}", GUIMode=self.GUIMode, window=self.window)
+            AmpersandIO.printMessage(
+                f"On Ground: {trueFalse[self.on_ground]}")
+        AmpersandIO.printMessage(
+            f"Transient: {trueFalse[self.transient]}")
         self.summarize_background_mesh()
-        self.list_stl_files()
+        AmpersandPrimitives.list_stl_files(self.stl_files)
+        
 
     # this will show the details of the background mesh
 
@@ -130,13 +113,13 @@ class AmpersandProject:  # ampersandProject class to handle the project creation
         nx = self.meshSettings['domain']['nx']
         ny = self.meshSettings['domain']['ny']
         nz = self.meshSettings['domain']['nz']
-        ampersandIO.printMessage(f"Domain size:{'X':>10}{'Y':>10}{'Z':>10}")
-        ampersandIO.printMessage(
+        AmpersandIO.printMessage(f"Domain size:{'X':>10}{'Y':>10}{'Z':>10}")
+        AmpersandIO.printMessage(
             f"Min         {minX:>10.3f}{minY:>10.3f}{minZ:>10.3f}")
-        ampersandIO.printMessage(
+        AmpersandIO.printMessage(
             f"Max         {maxX:>10.3f}{maxY:>10.3f}{maxZ:>10.3f}")
-        ampersandIO.printMessage(f"Background mesh size: {nx}x{ny}x{nz} cells")
-        ampersandIO.printMessage(
+        AmpersandIO.printMessage(f"Background mesh size: {nx}x{ny}x{nz} cells")
+        AmpersandIO.printMessage(
             f"Background cell size: {self.meshSettings['maxCellSize']} m")
 
     def change_boundary_condition(self, bcName, newBC):
@@ -145,19 +128,19 @@ class AmpersandProject:  # ampersandProject class to handle the project creation
             for aPatch in self.meshSettings['patches']:
                 if bcName == aPatch['name']:
                     aPatch['type'] = newBC
-                    ampersandIO.printMessage(
-                        f"Boundary condition {bcName} changed to {newBC}", GUIMode=self.GUIMode, window=self.window)
+                    AmpersandIO.printMessage(
+                        f"Boundary condition {bcName} changed to {newBC}")
                     return 0
             if bcName in bcPatches:
                 self.meshSettings['patches'][bcName]['type'] = newBC
                 self.meshSettings['bcPatches'][bcName]['purpose'] = newBC
                 newProperty = self.set_property(newBC)
                 self.meshSettings['bcPatches'][bcName]['property'] = newProperty
-                ampersandIO.printMessage(
-                    f"Boundary condition {bcName} changed to {newBC}", GUIMode=self.GUIMode, window=self.window)
+                AmpersandIO.printMessage(
+                    f"Boundary condition {bcName} changed to {newBC}")
                 return 0
             else:
-                ampersandIO.printMessage(
+                AmpersandIO.printMessage(
                     "Boundary condition not found in the list")
         geometry = self.meshSettings['geometry']
         for stl in geometry:
@@ -165,15 +148,15 @@ class AmpersandProject:  # ampersandProject class to handle the project creation
                 stl['purpose'] = newBC
                 newProperty = self.set_property(newBC)
                 self.meshSettings['bcPatches'][bcName]['property'] = newProperty
-                ampersandIO.printMessage(
-                    f"Boundary condition of {bcName} changed to {newBC}", GUIMode=self.GUIMode, window=self.window)
+                AmpersandIO.printMessage(
+                    f"Boundary condition of {bcName} changed to {newBC}")
                 return 0
         return -1
 
     def change_stl_refinement_level(self, stl_file_number=0):
-        ampersandIO.printMessage("Changing refinement level")
-        refMin = ampersandIO.get_input_int("Enter new refMin: ")
-        refMax = ampersandIO.get_input_int("Enter new refMax: ")
+        AmpersandIO.printMessage("Changing refinement level")
+        refMin = AmpersandIO.get_input_int("Enter new refMin: ")
+        refMax = AmpersandIO.get_input_int("Enter new refMax: ")
         self.stl_files[stl_file_number]['refineMin'] = refMin
         self.stl_files[stl_file_number]['refineMax'] = refMax
         # stl_name = project.stl_files[stl_file_number]['name']
@@ -187,277 +170,29 @@ class AmpersandProject:  # ampersandProject class to handle the project creation
                 stl['featureLevel'] = refMax
                 break
         if not fileFound:
-            ampersandIO.printMessage("STL file not found in the geometry list")
+            AmpersandIO.printMessage("STL file not found in the geometry list")
 
         # return project
 
-    def choose_modification(self):
-        current_modification = ampersandIO.get_option_choice(prompt="Choose any option for project modification: ",
-                                                             options=self.mod_options, title="\nModify Project Settings")
-        self.current_modification = self.mod_options[current_modification]
-        ampersandIO.printMessage(
-            f"Current modification: {self.current_modification}", GUIMode=self.GUIMode, window=self.window)
 
     def choose_modification_categorized(self):
         options = ['Mesh', 'Boundary Conditions', 'Fluid Properties', 'Numerical Settings',
                    'Simulation Control Settings', 'Turbulence Model', 'Post Processing Settings']
-        current_modification = ampersandIO.get_option_choice(prompt="Choose any option for project modification: ",
+        current_modification = AmpersandIO.get_option_choice(prompt="Choose any option for project modification: ",
                                                              options=options, title="\nModify Project Settings")
         mesh_options = ['Background Mesh', 'Mesh Point',
                         'Add Geometry', 'Refinement Levels']
 
         if current_modification < 0 or current_modification > len(options)-1:
-            ampersandIO.printMessage("Invalid option. Aborting operation")
+            AmpersandIO.printMessage("Invalid option. Aborting operation")
             return -1
         if current_modification == 0:
-            self.current_modification = mesh_options[ampersandIO.get_option_choice(prompt="Choose any option for mesh modification: ",
+            self.current_modification = mesh_options[AmpersandIO.get_option_choice(prompt="Choose any option for mesh modification: ",
                                                                                    options=mesh_options, title="\nModify Mesh Settings")]
         else:
             self.current_modification = options[current_modification]
 
-    def remove_duplicate_stl_files(self):
-        # detect duplicate dictionaries in the list
-        seen = set()
-        new_list = []
-        for d in self.stl_files:
-            t = tuple(d.items())
-            if t not in seen:
-                seen.add(t)
-                new_list.append(d)
-        self.stl_files = new_list
-        self.meshSettings['geometry'] = ampersandPrimitives.remove_duplicate_dicts(
-            self.meshSettings['geometry'])
-        # print("stl_files",self.stl_files)
-        # print("Mesh settings",self.meshSettings["geometry"])
 
-    def set_project_directory(self, project_directory_path):
-        if self.GUIMode:
-            stopWhenError = False
-        else:
-            stopWhenError = True
-        if project_directory_path is None:
-            if stopWhenError:
-                ampersandIO.printMessage(
-                    "No directory selected. Aborting project creation.")
-                exit()
-            else:
-                return -1
-        # assert os.path.exists(project_directory_path), "The chosen directory does not exist"
-        if not os.path.exists(project_directory_path):
-            if stopWhenError:
-                ampersandIO.printMessage(
-                    "The chosen directory does not exist. Aborting project creation.")
-                exit()
-            else:
-                self.project_directory_path = None
-                return -1
-        self.project_directory_path = project_directory_path
-
-    def set_project_name(self, project_name):
-        self.project_name = project_name
-
-    def set_user_name(self, user_name):
-        self.user_name = user_name
-
-    # create the project path for the user and project name
-    def create_project_path_user(self):
-        if not self.project_directory_path:
-            ampersandIO.printWarning(
-                "No directory selected. Aborting project creation.", GUIMode=self.GUIMode)
-            return -1
-        self.project_path = os.path.join(
-            self.project_directory_path, self.user_name, self.project_name)
-
-    # To create the project path for a new project with the project name
-    def create_project_path(self):
-        if not self.project_directory_path:
-            ampersandIO.printWarning(
-                "No directory selected. Aborting project creation.")
-            return -1
-        self.project_path = os.path.join(
-            self.project_directory_path, self.project_name)
-
-    # this is to set the project path if the project is already existing
-    # useful for opening existing projects and modifying the settings
-    def set_project_path(self, project_path):
-        if project_path is None:
-            if self.GUIMode == False:
-                ampersandIO.printWarning(
-                    "No project path selected. Aborting project creation.", GUIMode=self.GUIMode)
-            # ampersandIO.printWarning("No project path selected. Aborting project creation/modification.",GUIMode=self.GUIMode)
-            return -1
-            # exit()
-        if os.path.exists(project_path):
-            settings_file = os.path.join(project_path, "project_settings.yaml")
-            if os.path.exists(settings_file):
-                ampersandIO.printMessage(
-                    "Project found, loading project settings", GUIMode=self.GUIMode, window=self.window)
-                self.existing_project = True
-                self.project_path = project_path
-                return 0
-            else:
-                if self.GUIMode == False:
-                    ampersandIO.printWarning(
-                        "Settings file not found. Please open an Ampersand case directory.", GUIMode=self.GUIMode)
-                # ampersandIO.printWarning("Settings file not found. Please open an Ampersand case directory.",GUIMode=self.GUIMode)
-                # TO DO: Add the code socket to create a new project here
-                return -1
-        else:
-            if self.GUIMode == False:
-                ampersandIO.printWarning(
-                    "Project path does not exist. Aborting project creation/opening.", GUIMode=self.GUIMode)
-            # ampersandIO.printWarning("Project path does not exist. Aborting project creation/opening.",GUIMode=self.GUIMode)
-            return -1
-
-    # check if the project path exists and if the project is already existing
-    def check_project_path(self):
-        if os.path.exists(self.project_path):
-            settings_file = os.path.join(
-                self.project_path, "project_settings.yaml")
-            if os.path.exists(settings_file):
-                ampersandIO.printWarning(
-                    "Project already exists, loading project settings", GUIMode=self.GUIMode)
-                self.existing_project = True
-                return 0
-            else:
-                self.existing_project = False
-                return -1
-        else:
-            self.existing_project = False
-            return -1
-
-    # Wrapper of cwd with error handling
-    def go_inside_directory(self):
-        try:
-            os.chdir(self.project_path)
-        except OSError as error:
-            ampersandIO.printError(error)
-        cwd = os.getcwd()
-        ampersandIO.printMessage(
-            f"Working directory: {cwd}", GUIMode=self.GUIMode, window=self.window)
-        self.inside_project_directory = True
-
-    # Check if the 0 directory exists in the project directory
-    def check_0_directory(self):
-        if not os.path.exists("0"):
-            ampersandIO.printWarning(
-                "0 directory does not exist.", GUIMode=self.GUIMode)
-            ampersandIO.printMessage(
-                "Checking for 0.orig directory", GUIMode=self.GUIMode, window=self.window)
-            if os.path.exists("0.orig"):
-                ampersandIO.printMessage(
-                    "0.orig directory found. Copying to 0 directory", GUIMode=self.GUIMode, window=self.window)
-                shutil.copytree("0.orig", "0")
-            else:
-                ampersandIO.printWarning(
-                    "0.orig directory not found. Aborting project creation.", GUIMode=self.GUIMode)
-                return -1
-        return 0
-
-    # Check if the constant directory exists in the project directory
-    def check_constant_directory(self):
-        if not os.path.exists("constant"):
-            ampersandIO.printWarning(
-                "constant directory does not exist.", GUIMode=self.GUIMode)
-            # ampersandIO.printError("constant directory is necessary for the project")
-            return -1
-        return 0
-
-    # Check if the system directory exists in the project directory
-    def check_system_directory(self):
-        if not os.path.exists("system"):
-            ampersandIO.printWarning(
-                "system directory does not exist.", GUIMode=self.GUIMode)
-            # ampersandIO.printError("system directory is necessary for the project")
-            return -1
-        return 0
-
-    # Check if the constant/triSurface directory exists in the project directory
-    def check_triSurface_directory(self):
-        if not os.path.exists("constant/triSurface"):
-            ampersandIO.printWarning(
-                "triSurface directory does not exist.", GUIMode=self.GUIMode)
-            # ampersandIO.printError("triSurface directory is necessary for the project")
-            return -1
-        # if exists, check if the stl files are present
-        stl_files = os.listdir("constant/triSurface")
-
-    # to check whether log files are present in the project directory
-    def check_log_files(self):
-        log_files = os.listdir()
-        if 'log.simpleFoam' in log_files:
-            ampersandIO.printMessage(
-                "Simulation log file found", GUIMode=self.GUIMode, window=self.window)
-            return 1
-        if 'log.pimpleFoam' in log_files:
-            ampersandIO.printMessage(
-                "Simulation log file found", GUIMode=self.GUIMode, window=self.window)
-            return 1
-        return 0
-
-    # to check whether the U and p files are present in the postProcess directory
-    def check_post_process_files(self):
-        if (not os.path.exists("postProcessing/probe/0")):
-            ampersandIO.printWarning(
-                "postProcess directory does not exist", GUIMode=self.GUIMode)
-            return 0
-        postProcess_files = os.listdir("postProcessing/probe/0")
-        if 'U' in postProcess_files and 'p' in postProcess_files:
-            ampersandIO.printMessage(
-                "U and p files found in postProcess directory", GUIMode=self.GUIMode, window=self.window)
-            return 1
-        return 0
-
-    def check_forces_files(self):
-        if (not os.path.exists("postProcessing/forces/0")):
-            ampersandIO.printWarning(
-                "forces directory does not exist", GUIMode=self.GUIMode)
-            return 0
-        forces_files = os.listdir("postProcessing/forces/0")
-        if 'force.dat' in forces_files:
-            ampersandIO.printMessage("force.dat found in forces directory")
-            return 1
-        return 0
-
-    # Create the project directory in the specified location.
-    # 0, constant, system, constant/triSurface directories are created.
-
-    def create_project(self):
-        # check if the project path exists
-        if self.project_path is None:
-            ampersandIO.printError(
-                "No project path selected. Aborting project creation.", GUIMode=self.GUIMode)
-            return -1
-        if os.path.exists(self.project_path):
-            ampersandIO.printWarning(
-                "Project already exists. Skipping the creation of directories", GUIMode=self.GUIMode)
-            self.existing_project = True
-        else:
-            ampersandIO.printMessage("Creating project directory")
-            try:
-                os.makedirs(self.project_path)
-
-            except OSError as error:
-                ampersandIO.printError(error)
-        try:
-            os.chdir(self.project_path)
-        except OSError as error:
-            ampersandIO.printError(error)
-        cwd = os.getcwd()
-        ampersandIO.printMessage(
-            f"Working directory: {cwd}", GUIMode=self.GUIMode, window=self.window)
-
-        # create 0, constant and system directory
-        try:
-            os.mkdir("0")
-            os.mkdir("constant")
-            os.mkdir("system")
-            os.mkdir("constant/triSurface")
-        except OSError as error:
-            ampersandIO.printError(
-                "File system already exists. Skipping the creation of directories", GUIMode=self.GUIMode)
-            return -1
-        return 0  # return 0 if the project is created successfully
 
     # write current settings to the project_settings.yaml file inside the project directory
     def write_settings(self):
@@ -474,15 +209,13 @@ class AmpersandProject:  # ampersandProject class to handle the project creation
             'postProcessSettings': self.postProcessSettings
         }
         # print(self.meshSettings)
-        ampersandIO.printMessage(
-            "Writing settings to project_settings.yaml", GUIMode=self.GUIMode, window=self.window)
-        ampersandPrimitives.dict_to_yaml(settings, 'project_settings.yaml')
+        AmpersandIO.printMessage("Writing settings to project_settings.yaml")
+        AmpersandPrimitives.dict_to_yaml(settings, f'{self.project_path}/project_settings.yaml')
 
     # If the project is already existing, load the settings from the project_settings.yaml file
     def load_settings(self):
-        ampersandIO.printMessage(
-            "Loading project settings", GUIMode=self.GUIMode, window=self.window)
-        settings = ampersandPrimitives.yaml_to_dict('project_settings.yaml')
+        AmpersandIO.printMessage("Loading project settings")
+        settings = AmpersandPrimitives.yaml_to_dict(f"{self.project_path}/project_settings.yaml")
         self.meshSettings = settings['meshSettings']
         self.physicalProperties = settings['physicalProperties']
         self.numericalSettings = settings['numericalSettings']
@@ -496,7 +229,7 @@ class AmpersandProject:  # ampersandProject class to handle the project creation
         for geometry in self.meshSettings['geometry']:
             if (geometry['type'] == 'triSurfaceMesh'):
                 if (geometry['name'] in self.stl_names):
-                    ampersandIO.printMessage(
+                    AmpersandIO.printMessage(
                         f"STL file {geometry['name']} already exists in the project, skipping the addition")
                 else:
                     self.stl_files.append(geometry)
@@ -510,34 +243,34 @@ class AmpersandProject:  # ampersandProject class to handle the project creation
         self.refinement = self.meshSettings['fineLevel']
         # self.characteristicLength = self.meshSettings['characteristicLength']
         self.useFOs = self.postProcessSettings['FOs']
-        project_name = self.project_path.split("/")[-1]
-        self.project_name = project_name
         # treat bounds as tuple
-        self.meshSettings["geometry"] = ampersandPrimitives.treat_bounds(
-            self.meshSettings["geometry"])
+        self.meshSettings["geometry"] = AmpersandPrimitives.treat_bounds(
+            self.meshSettings["geometry"]
+        )
+        
 
     def show_settings(self):
-        ampersandIO.printMessage("Project settings")
-        ampersandIO.printMessage("Mesh Settings")
-        ampersandIO.print_dict(self.meshSettings)
-        ampersandIO.printMessage("Physical Properties")
-        ampersandIO.print_dict(self.physicalProperties)
-        ampersandIO.printMessage("Numerical Settings")
-        ampersandIO.print_dict(self.numericalSettings)
-        ampersandIO.printMessage("Inlet Values")
-        ampersandIO.print_dict(self.inletValues)
-        ampersandIO.printMessage("Boundary Conditions")
-        ampersandIO.print_dict(self.boundaryConditions)
-        ampersandIO.printMessage("Solver Settings")
-        ampersandIO.print_dict(self.solverSettings)
-        ampersandIO.printMessage("Simulation Settings")
-        ampersandIO.print_dict(self.simulationSettings)
-        ampersandIO.printMessage("Parallel Settings")
-        ampersandIO.print_dict(self.parallelSettings)
-        ampersandIO.printMessage("Simulation Flow Settings")
-        ampersandIO.print_dict(self.simulationFlowSettings)
-        ampersandIO.printMessage("Post Process Settings")
-        ampersandIO.print_dict(self.postProcessSettings)
+        AmpersandIO.printMessage("Project settings")
+        AmpersandIO.printMessage("Mesh Settings")
+        AmpersandIO.print_dict(self.meshSettings)
+        AmpersandIO.printMessage("Physical Properties")
+        AmpersandIO.print_dict(self.physicalProperties)
+        AmpersandIO.printMessage("Numerical Settings")
+        AmpersandIO.print_dict(self.numericalSettings)
+        AmpersandIO.printMessage("Inlet Values")
+        AmpersandIO.print_dict(self.inletValues)
+        AmpersandIO.printMessage("Boundary Conditions")
+        AmpersandIO.print_dict(self.boundaryConditions)
+        AmpersandIO.printMessage("Solver Settings")
+        AmpersandIO.print_dict(self.solverSettings)
+        AmpersandIO.printMessage("Simulation Settings")
+        AmpersandIO.print_dict(self.simulationSettings)
+        AmpersandIO.printMessage("Parallel Settings")
+        AmpersandIO.print_dict(self.parallelSettings)
+        AmpersandIO.printMessage("Simulation Flow Settings")
+        AmpersandIO.print_dict(self.simulationFlowSettings)
+        AmpersandIO.printMessage("Post Process Settings")
+        AmpersandIO.print_dict(self.postProcessSettings)
 
     # If the project is not existing, load the default settings
     def load_default_settings(self):
@@ -552,21 +285,6 @@ class AmpersandProject:  # ampersandProject class to handle the project creation
         self.simulationFlowSettings = simulationFlowSettings
         self.postProcessSettings = postProcessSettings
 
-    # Create the settings for the project or load the existing settings
-    def create_settings(self):
-        if self.existing_project:
-            ampersandIO.printMessage(
-                "Project already exists. Loading project settings")
-            try:
-                self.load_settings()
-            except FileNotFoundError:
-                ampersandIO.printMessage(
-                    "Settings file not found. Loading default settings")
-                self.load_default_settings()
-                self.write_settings()
-        else:
-            self.load_default_settings()
-            self.write_settings()
 
     # Add a stl file to the project settings (self.meshSettings)
     def add_stl_to_mesh_settings(self, stl_name, refMin=0, refMax=0, featureEdges=True,
@@ -583,7 +301,7 @@ class AmpersandProject:  # ampersandProject class to handle the project creation
         else:
             nLayers = 7
 
-        stl_ = {'name': stl_name, 'type': 'triSurfaceMesh', 'purpose': purpose, 'refineMin': refMin, 'refineMax': refMax,
+        stl_geometry = {'name': stl_name, 'type': 'triSurfaceMesh', 'purpose': purpose, 'refineMin': refMin, 'refineMax': refMax,
                 'featureEdges': featureEdges, 'featureLevel': featureLevel, 'nLayers': nLayers, 'property': property, 'bounds': bounds}
 
         # this snippet is to prevent the same stl file from being added multiple times
@@ -591,17 +309,18 @@ class AmpersandProject:  # ampersandProject class to handle the project creation
         # To check if the stl file already exists in the project, stl names are compared.
         # list all the stl files in the project
         for stl_name in self.stl_names:
-            if stl_name == stl_['name']:
-                ampersandIO.printMessage(
+            if stl_name == stl_geometry['name']:
+                AmpersandIO.printMessage(
                     f"STL file {stl_name} already exists in the project")
                 already_exists = True
                 break
             idx += 1
         if not already_exists:
             self.stl_names.append(stl_name)
-            self.stl_files.append(stl_)
+            self.stl_files.append(stl_geometry)
+            self.meshSettings['geometry'].append(stl_geometry)
         else:
-            self.stl_files[idx] = stl_
+            self.stl_files[idx] = stl_geometry
             return 1  # flag to indicate that the stl file is replaced
         return 0
 
@@ -610,147 +329,117 @@ class AmpersandProject:  # ampersandProject class to handle the project creation
         if purpose == 'inlet':
             U = AmpersandDataInput.get_inlet_values()
             property = tuple(U)
-            ampersandIO.printMessage(
+            AmpersandIO.printMessage(
                 f"Setting property of {purpose} to {property}")
         elif purpose == 'refinementRegion':
-            refLevel = ampersandIO.get_input_int("Enter refinement level: ")
+            refLevel = AmpersandIO.get_input_int("Enter refinement level: ")
             property = refLevel
         elif purpose == 'cellZone':
-            refLevel = ampersandIO.get_input_int("Enter refinement level: ")
-            createPatches = ampersandIO.get_input_bool(
+            refLevel = AmpersandIO.get_input_int("Enter refinement level: ")
+            createPatches = AmpersandIO.get_input_bool(
                 "Create patches for this cellZone? (y/N): ")
             # 0 is just a placeholder for listing the patches
             property = (refLevel, createPatches, 0)
         elif purpose == 'refinementSurface':
-            refLevel = ampersandIO.get_input_int("Enter refinement level: ")
+            refLevel = AmpersandIO.get_input_int("Enter refinement level: ")
             property = refLevel
         else:
             property = None
         return property
 
-    def ask_stl_settings(self, stl_file):
-        ampersandIO.printMessage(f"Settings of the {stl_file['name']} file")
-        stl_file['refineMin'] = ampersandIO.get_input("Min Refinement: ")
-        stl_file['refineMax'] = ampersandIO.get_input("Max Refinement: ")
-        featureEdges = ampersandIO.get_input("Refine Feature Edges?: (y/N) ")
-        if (featureEdges == 'y'):
-            stl_file['featureEdges'] = True
-        else:
-            stl_file['featureEdges'] = False
-        stl_file['featureLevel'] = ampersandIO.get_input("Feature Level: ")
-        stl_file['nLayers'] = ampersandIO.get_input("Number of Layers: ")
+    def add_stl_file(self, stl_path: Union[str, Path], purpose='wall'):
+        # Convert paths to Path objects
+        stl_path = Path(stl_path)
+        
+        # Validate input file
+        if not stl_path.exists():
+            raise FileNotFoundError(f"STL file {stl_path} does not exist")
+            
+        stl_name = stl_path.name
+        if stl_name in self.stl_names:
+            raise ValueError(f"STL file {stl_name} already exists in project")
 
-    def add_stl_to_project(self):
-        for stl_file in self.stl_files:
-            self.meshSettings['geometry'].append(stl_file)
-        self.remove_duplicate_stl_files()
+        # Get purpose and properties
+        property = None if AmpersandIO.GUIMode else self.set_property(purpose)
 
-    # to only copy the STL file to the project directory and add it to the STL list
-    def add_stl_file(self):
-        stl_file = ampersandPrimitives.ask_for_file(
-            [("STL Geometry", "*.stl"), ("OBJ Geometry", "*.obj")], self.GUIMode)
-        if stl_file is None:
-            ampersandIO.printWarning(
-                "No file selected. Please select STL file if necessary.", GUIMode=self.GUIMode)
-            return -1
-        if os.path.exists(stl_file):
-            # add the stl file to the project
-            # This is a bit confusing.
-            # stl_name is the name of the file, stl_file is the path to the file
-            file_path_to_token = stl_file.split("/")
-            stl_name = file_path_to_token[-1]
-            if stl_name in self.stl_names:
-                ampersandIO.printWarning(
-                    f"STL file {stl_name} already exists in the project", GUIMode=self.GUIMode)
-                return -1
-            else:  # this is to prevent the bug of having the same file added multiple times
-                if self.GUIMode:
-                    purpose = "wall"
-                    property = None
-                else:
-                    purpose = AmpersandDataInput.get_purpose()
-                    property = self.set_property(purpose)
-                bounds = StlAnalysis.compute_bounding_box(stl_file)
-                bounds = tuple(bounds)
-                ampersandIO.printMessage(
-                    f"Bounds of the geometry: {bounds}", GUIMode=self.GUIMode, window=self.window)
-                if purpose == 'refinementRegion' or purpose == 'refinementSurface':
-                    featureEdges = False
-                else:
-                    featureEdges = True
-                self.add_stl_to_mesh_settings(
-                    stl_name, purpose=purpose, property=property, featureEdges=featureEdges, bounds=bounds)
-            # this is the path to the constant/triSurface inside project directory where STL will be copied
-            stl_path = os.path.join(
-                self.project_path, "constant", "triSurface", stl_name)
-            try:
-                ampersandIO.printMessage(
-                    f"Copying {stl_name} to the project directory", GUIMode=self.GUIMode, window=self.window)
-                shutil.copy(stl_file, stl_path)
-            except OSError as error:
-                ampersandIO.printError(error, GUIMode=self.GUIMode)
-                return -1
-            try:
-                StlAnalysis.set_stl_solid_name(stl_path)
-            except Exception as error:
-                ampersandIO.printError(error, GUIMode=self.GUIMode)
-                return -1
-        else:
-            ampersandIO.printError(
-                "File does not exist. Aborting project creation.", GUIMode=self.GUIMode)
-            return -1
-        self.current_stl_file = stl_path
-        return 0
+        # Calculate bounds from STL
+        bounds = tuple(StlAnalysis.compute_bounding_box(stl_path))
+        AmpersandIO.printMessage(f"Geometry bounds: {bounds}")
 
-    # this is a wrapper of the primitives
-    def list_stl_files(self):
-        ampersandPrimitives.list_stl_files(
-            self.stl_files, self.GUIMode, self.window)
+        # Skip feature edges for refinement regions
+        feature_edges = purpose not in ('refinementRegion', 'refinementSurface')
+        
+        # Add to mesh settings
+        self.add_stl_to_mesh_settings(
+            stl_name=stl_name, 
+            purpose=purpose,
+            property=property,
+            featureEdges=feature_edges,
+            bounds=bounds
+        )
 
-    def list_stl_paths(self):
-        stl_paths = []
-        for stl_file in self.stl_files:
-            stl_path = os.path.join(
-                self.project_path, "constant", "triSurface", stl_file['name'])
-            # ampersandIO.printMessage(stl_path)
-            stl_paths.append(stl_path)
-        return stl_paths
+        self.analyze_stl_file(stl_path)
 
+
+        # Copy STL file to project
+        dest_path = self.project_path / "constant" / "triSurface" / stl_name
+        try:
+            dest_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(stl_path, dest_path)
+            AmpersandIO.printMessage(f"Copied {stl_name} to {dest_path}")
+        except OSError as e:
+            raise RuntimeError(f"Failed to copy STL file: {e}")
+
+        # Set solid name in STL file
+        try:
+            StlAnalysis.set_stl_solid_name(dest_path)
+        except Exception as e:
+            raise RuntimeError(f"Failed to set STL solid name: {e}")
+
+        self.current_stl_file = dest_path
+
+
+    def list_stl_paths(self, project_path: Union[str, Path]):
+        stl_dir = Path(project_path) / "constant" / "triSurface"
+        if not stl_dir.exists():
+            return []
+        return list(stl_dir.glob("*.stl"))
+
+    # TODO: this function is not used here
     def remove_stl_file(self, stl_file_number=0):
         # self.list_stl_files()
-        stl_file_number = ampersandIO.get_input(
+        stl_file_number = AmpersandIO.get_input(
             "Enter the number of the file to remove: ")
         try:
             stl_file_number = int(stl_file_number)
         except ValueError:
-            ampersandIO.printMessage("Invalid input. Aborting operation")
+            AmpersandIO.printMessage("Invalid input. Aborting operation")
             return -1
         if stl_file_number < 0 or stl_file_number > len(self.stl_files):
-            ampersandIO.printMessage("Invalid file number. Aborting operation")
+            AmpersandIO.printMessage("Invalid file number. Aborting operation")
             return -1
         stl_file = self.stl_files[stl_file_number]
         stl_name = stl_file['name']
         self.stl_files.remove(stl_file)
         self.stl_names.remove(stl_name)
-        stl_path = os.path.join(
-            self.project_path, "constant", "triSurface", stl_name)
+        stl_path = os.path.join(self.project_path, "constant", "triSurface", stl_name)
         try:
             os.remove(stl_path)
         except OSError as error:
-            ampersandIO.printError(error)
+            AmpersandIO.printError(error)
             return -1
         return 0
 
-    def set_flow_type(self, internalFlow=False):
-        self.internalFlow = internalFlow
-        self.meshSettings['internalFlow'] = self.internalFlow
+    def set_flow_type(self, is_internal_flow=False):
+        self.internalFlow = is_internal_flow
+        self.meshSettings['internalFlow'] = is_internal_flow
 
-    def set_half_model(self, half_model: bool):
-        self.halfModel = half_model
-        self.meshSettings['halfModel'] = half_model
+    def set_half_model(self, is_half_model: bool):
+        self.halfModel = is_half_model
+        self.meshSettings['halfModel'] = is_half_model
 
-        if half_model:
-            ampersandPrimitives.change_patch_type(
+        if is_half_model:
+            AmpersandPrimitives.change_patch_type(
                 self.meshSettings['patches'], patch_name='back', new_type='symmetry'
             )
 
@@ -766,62 +455,43 @@ class AmpersandProject:  # ampersandProject class to handle the project creation
         self.meshSettings['domain']['ny'] = ny
         self.meshSettings['domain']['nz'] = nz
 
-    def analyze_stl_file(self, stl_file_number=0):
+    def analyze_stl_file(self, stl_path: Union[str, Path]):
+        stl_path = Path(stl_path)
         rho = self.physicalProperties['rho']
         nu = self.physicalProperties['nu']
         U = max(self.inletValues['U'])
         ER = self.meshSettings['addLayersControls']['expansionRatio']
-        try:
-            stl_file_number = int(stl_file_number)
-        except ValueError:
-            ampersandIO.printError(
-                "Invalid input. Aborting operation", GUIMode=self.GUIMode)
-            return -1
-        if stl_file_number < 0 or stl_file_number > len(self.stl_files):
-            ampersandIO.printError(
-                "Invalid file number. Aborting operation", GUIMode=self.GUIMode)
-            return -1
-        stl_file = self.stl_files[stl_file_number]
-        stl_name = stl_file['name']
-        ampersandIO.printMessage(
-            f"Analyzing {stl_name}", GUIMode=self.GUIMode, window=self.window)
-        stl_path = os.path.join(
-            self.project_path, "constant", "triSurface", stl_name)
+
+        AmpersandIO.printMessage(f"Analyzing {stl_path.name}")
+        # stl_path = os.path.join(self.project_path, "constant", "triSurface", stl_name)
         stlBoundingBox = StlAnalysis.compute_bounding_box(stl_path)
         domain_size, nx, ny, nz, refLevel, target_y, nLayers = StlAnalysis.calc_mesh_settings(stlBoundingBox, nu, rho, U=U, maxCellSize=2.0, expansion_ratio=ER,
                                                                                               onGround=self.on_ground, internalFlow=self.internalFlow,
-                                                                                              refinement=self.refinement, halfModel=self.halfModel,
-                                                                                              GUI=self.GUIMode, window=self.window)
+                                                                                              refinement=self.refinement, halfModel=self.halfModel)
         featureLevel = max(refLevel, 1)
-        self.meshSettings = StlAnalysis.set_mesh_settings(
-            self.meshSettings, domain_size, nx, ny, nz, refLevel, featureLevel, nLayers=nLayers)
+        self.meshSettings = StlAnalysis.set_mesh_settings(self.meshSettings, domain_size, nx, ny, nz, refLevel, featureLevel, nLayers)
         self.set_max_domain_size(domain_size, nx, ny, nz)
-        self.meshSettings = StlAnalysis.set_mesh_location(
-            self.meshSettings, stl_path, self.internalFlow)
+        self.meshSettings = StlAnalysis.set_mesh_location(self.meshSettings, stl_path, self.internalFlow)
         refinementBoxLevel = max(2, refLevel-3)
-        self.meshSettings = StlAnalysis.addRefinementBoxToMesh(
-            meshSettings=self.meshSettings, stl_path=stl_path, refLevel=refinementBoxLevel, internalFlow=self.internalFlow)
+        self.meshSettings = StlAnalysis.addRefinementBoxToMesh(self.meshSettings, stl_path, refLevel=refinementBoxLevel, internalFlow=self.internalFlow)
         if (self.internalFlow == False and self.on_ground == True):
             # if the flow is external and the geometry is on the ground, add a ground refinement box
-            self.meshSettings = StlAnalysis.addGroundRefinementBoxToMesh(
-                meshSettings=self.meshSettings, stl_path=stl_path, refLevel=refinementBoxLevel)
+            self.meshSettings = StlAnalysis.addGroundRefinementBoxToMesh(self.meshSettings, stl_path, refinementBoxLevel)
         # set the layer thickness to 0.5 times the cell size
-        self.meshSettings = StlAnalysis.set_layer_thickness(
-            self.meshSettings, 0.5)
+        self.meshSettings = StlAnalysis.set_layer_thickness(self.meshSettings, 0.5)
         # store the background mesh size for future reference
         maxCellSize = abs((domain_size[1]-domain_size[0])/nx)
         self.meshSettings['maxCellSize'] = maxCellSize
         # self.meshSettings = stlAnalysis.set_min_vol(self.meshSettings, minVol)
-        return 0
 
+    # TODO: not used here
     def adjust_domain_size(self):
         # adjust the domain size based on the bounding box of the stl files
-        ampersandIO.printMessage(
-            "Adjusting domain size based on the bounding box of the stl files", GUIMode=self.GUIMode, window=self.window)
+        AmpersandIO.printMessage(
+            "Adjusting domain size based on the bounding box of the stl files")
         for stl_file in self.stl_files:
             stl_name = stl_file['name']
-            stl_path = os.path.join(
-                self.project_path, "constant", "triSurface", stl_name)
+            stl_path = os.path.join(self.project_path, "constant", "triSurface", stl_name)
             stlBoundingBox = StlAnalysis.compute_bounding_box(stl_path)
             xmin, xmax, ymin, ymax, zmin, zmax = stlBoundingBox
             self.minX = min(xmin, self.minX)
@@ -840,14 +510,14 @@ class AmpersandProject:  # ampersandProject class to handle the project creation
         self.meshSettings['domain']['minZ'] = self.minZ
         self.meshSettings['domain']['maxZ'] = self.maxZ
 
-    def set_inlet_values(self, U: Optional[tuple[float]] = None):
+    def set_inlet_values(self, U: Optional[tuple[float, float, float]] = None):
         if (not self.internalFlow):  # external flow
             assert U is not None, "Inlet velocity is not set, required for external flow"
             self.inletValues['U'] = U
             self.boundaryConditions['velocityInlet']['u_value'] = U
         else:  # internal flow
             # Use inlet values from the stl file
-            ampersandIO.printMessage(
+            AmpersandIO.printMessage(
                 "Setting inlet values for various inlet boundaries")
             for stl_file in self.stl_files:
                 if stl_file['purpose'] == 'inlet':
@@ -859,9 +529,6 @@ class AmpersandProject:  # ampersandProject class to handle the project creation
         self.physicalProperties['rho'] = fluid['rho']
         self.physicalProperties['nu'] = fluid['nu']
 
-    # def set_transient(self):
-    #    self.transient = ampersandIO.get_input_bool("Transient simulation (y/N)?: ")
-
     def set_parallel(self, n_core: int):
         self.parallelSettings['numberOfSubdomains'] = n_core
 
@@ -871,36 +538,29 @@ class AmpersandProject:  # ampersandProject class to handle the project creation
                     'cellZone', 'baffles', 'symmetry', 'cyclic', 'empty',]
         # purposes = ['wall', 'inlet','outlet', 'refinementRegion', 'refinementSurface', 'cellZone', 'baffles']
         if purpose not in purposes:
-            ampersandIO.printMessage(
+            AmpersandIO.printMessage(
                 "Invalid purpose. Setting purpose to wall")
             purpose = 'wall'
         patch['purpose'] = purpose
-
-    # choose turbulence model for the simulation
-    def choose_turbulence_model(self):
-        turbulence_models = ['kOmegaSST', 'kEpsilon', 'SpalartAllmaras']
-        turbulence_model = AmpersandDataInput.get_option_choice(
-            "Choose turbulence model: ", turbulence_models)
-        self.solverSettings['turbulenceModel'] = turbulence_model
 
     # set the turbulence model for the simulation
     def set_turbulence_model(self, turbulence_model='kOmegaSST'):
         turbulence_model = AmpersandDataInput.choose_turbulence_model()
         self.solverSettings['turbulenceModel'] = turbulence_model
 
-    def set_transient_settings(self, transient: bool):
-        self.transient = transient
+    def set_transient_settings(self, is_transient: bool):
+        self.transient = is_transient
 
         if self.transient:
-            ampersandIO.printMessage("Transient simulation settings")
+            AmpersandIO.printMessage("Transient simulation settings")
             self.simulationSettings['transient'] = True
             self.simulationSettings['application'] = 'pimpleFoam'
             self.simulationFlowSettings['solver'] = 'pimpleFoam'
-            self.simulationSettings['endTime'] = ampersandIO.get_input_float(
+            self.simulationSettings['endTime'] = AmpersandIO.get_input_float(
                 "End time: ")
-            self.simulationSettings['writeInterval'] = ampersandIO.get_input_float(
+            self.simulationSettings['writeInterval'] = AmpersandIO.get_input_float(
                 "Write interval: ")
-            self.simulationSettings['deltaT'] = ampersandIO.get_input_float(
+            self.simulationSettings['deltaT'] = AmpersandIO.get_input_float(
                 "Time step: ")
             self.simulationSettings['adjustTimeStep'] = 'no'
             self.simulationSettings['maxCo'] = 0.9
@@ -909,20 +569,17 @@ class AmpersandProject:  # ampersandProject class to handle the project creation
             # for PIMPLE, the relaxation factors are set to 0.7 and p = 0.3
             self.numericalSettings['relaxationFactors']['p'] = 0.3
 
-    def set_ground_type(self, on_ground: bool):
+    def set_on_ground(self, on_ground: bool):
         self.on_ground = on_ground
         self.meshSettings['onGround'] = on_ground
         if on_ground:
-            ampersandPrimitives.change_patch_type(self.meshSettings['patches'], patch_name='ground',
+            AmpersandPrimitives.change_patch_type(self.meshSettings['patches'], patch_name='ground',
                                                   new_type='wall')
 
     def set_refinement_level(self, fine_level: int):
         self.refinement = fine_level
         self.meshSettings['fineLevel'] = fine_level
 
-    def set_global_refinement_level(self, refinement=0):
-        self.refinement = refinement
-        self.meshSettings['fineLevel'] = refinement
 
     def set_post_process_settings(self, useFOs: bool):
         self.useFOs = useFOs
@@ -937,113 +594,65 @@ class AmpersandProject:  # ampersandProject class to handle the project creation
         # the default probe location for monitoring of flow variables
         self.postProcessSettings['probeLocations'].append(meshPoint)
 
-    def get_probe_location(self):
-        point = postProcess.get_probe_location()
-        # for internal flows, the point should be inside stl
-        # for external flows, the point should be outside stl
-        # TO DO
-        self.postProcessSettings['probeLocations'].append(point)
+    def write_project_files(self):
+        if (not self.project_path.exists()):
+            raise FileNotFoundError(f"Project not found at: {self.project_path}")
 
-    def create_project_files(self):
-        # (meshSettings, physicalProperties, numericalSettings, inletValues, boundaryConditions)=caseSettings
-        # check if the current working directory is the project directory
-        if not os.path.exists(self.project_path):
-            ampersandIO.printMessage(
-                "Project directory does not exist. Aborting project creation.")
-            return -1
-        if os.getcwd() != self.project_path:
-            os.chdir(self.project_path)
 
-        # Remove the existing 0.orig directory if it exists.
-        # This is to prevent the error of copying the old 0.orig directory to 0 directory
-        if os.path.exists("0.orig"):
-            shutil.rmtree("0.orig")
-        # create the initial conditions file
-        ampersandIO.printMessage("Creating boundary conditions")
-        # check if the 0 directory exists
-        if not os.path.exists("0"):
-            # create the 0 directory
-            os.mkdir("0")
-
-        create_boundary_conditions(
-            self.meshSettings, self.boundaryConditions, "0")
+        create_boundary_conditions(self.meshSettings, self.boundaryConditions, f"{self.project_path}/0")
 
         # go inside the constant directory
-        ampersandIO.printMessage(
-            "Creating physical properties and turbulence properties", GUIMode=self.GUIMode, window=self.window)
+        AmpersandIO.printMessage("Creating physical properties and turbulence properties")
         # create transportProperties file
         tranP = create_transportPropertiesDict(self.physicalProperties)
         # create turbulenceProperties file
         turbP = create_turbulencePropertiesDict(self.physicalProperties)
-        ampersandPrimitives.write_dict_to_file(
-            "constant/transportProperties", tranP)
-        ampersandPrimitives.write_dict_to_file(
-            "constant/turbulenceProperties", turbP)
+        AmpersandPrimitives.write_dict_to_file(f"{self.project_path}/constant/transportProperties", tranP)
+        AmpersandPrimitives.write_dict_to_file(f"{self.project_path}/constant/turbulenceProperties", turbP)
 
         # create the controlDict file
-        ampersandIO.printMessage(
-            "Creating the system files", GUIMode=self.GUIMode, window=self.window)
+        AmpersandIO.printMessage("Creating the system files")
         controlDict = createControlDict(self.simulationSettings)
-        ampersandPrimitives.write_dict_to_file(
-            "system/controlDict", controlDict)
+        AmpersandPrimitives.write_dict_to_file(f"{self.project_path}/system/controlDict", controlDict)
+        
         blockMeshDict = generate_blockMeshDict(self.meshSettings)
-        ampersandPrimitives.write_dict_to_file(
-            "system/blockMeshDict", blockMeshDict)
+        AmpersandPrimitives.write_dict_to_file(f"{self.project_path}/system/blockMeshDict", blockMeshDict)
+        
         snappyHexMeshDict = generate_snappyHexMeshDict(self.meshSettings)
-        ampersandPrimitives.write_dict_to_file(
-            "system/snappyHexMeshDict", snappyHexMeshDict)
-        surfaceFeatureExtractDict = create_surfaceFeatureExtractDict(
-            self.meshSettings)
-        ampersandPrimitives.write_dict_to_file(
-            "system/surfaceFeatureExtractDict", surfaceFeatureExtractDict)
+        AmpersandPrimitives.write_dict_to_file(f"{self.project_path}/system/snappyHexMeshDict", snappyHexMeshDict)
+        
+        surfaceFeatureExtractDict = create_surfaceFeatureExtractDict(self.meshSettings)
+        AmpersandPrimitives.write_dict_to_file(f"{self.project_path}/system/surfaceFeatureExtractDict", surfaceFeatureExtractDict)
+        
         fvSchemesDict = create_fvSchemesDict(self.numericalSettings)
-        ampersandPrimitives.write_dict_to_file(
-            "system/fvSchemes", fvSchemesDict)
-        fvSolutionDict = create_fvSolutionDict(
-            self.numericalSettings, self.solverSettings)
-        ampersandPrimitives.write_dict_to_file(
-            "system/fvSolution", fvSolutionDict)
+        AmpersandPrimitives.write_dict_to_file(f"{self.project_path}/system/fvSchemes", fvSchemesDict)
+        
+        fvSolutionDict = create_fvSolutionDict(self.numericalSettings, self.solverSettings)
+        AmpersandPrimitives.write_dict_to_file(f"{self.project_path}/system/fvSolution", fvSolutionDict)
+        
         decomposeParDict = createDecomposeParDict(self.parallelSettings)
-        ampersandPrimitives.write_dict_to_file(
-            "system/decomposeParDict", decomposeParDict)
-        FODict = postProcess.create_FOs(
-            self.meshSettings, self.postProcessSettings, useFOs=self.useFOs)
-        ampersandPrimitives.write_dict_to_file("system/FOs", FODict)
+        AmpersandPrimitives.write_dict_to_file(f"{self.project_path}/system/decomposeParDict", decomposeParDict)
+        
+        FODict = postProcess.create_FOs(self.meshSettings, self.postProcessSettings, useFOs=self.useFOs)
+        AmpersandPrimitives.write_dict_to_file(f"{self.project_path}/system/FOs", FODict)
 
         # create mesh script
-        ampersandIO.printMessage(
-            "Creating scripts for meshing and running the simulation", GUIMode=self.GUIMode, window=self.window)
-        meshScript = ScriptGenerator.generate_mesh_script(
-            self.simulationFlowSettings)
-        ampersandPrimitives.write_dict_to_file("mesh", meshScript)
+        AmpersandIO.printMessage("Creating scripts for meshing and running the simulation")
+        meshScript = ScriptGenerator.generate_mesh_script(self.simulationFlowSettings)
+        AmpersandPrimitives.write_dict_to_file(f"{self.project_path}/mesh", meshScript)
+        
         # create simulation script
-        simulationScript = ScriptGenerator.generate_simulation_script(
-            self.simulationFlowSettings)
-        ampersandPrimitives.write_dict_to_file("run", simulationScript)
-        ampersandPrimitives.crlf_to_LF("mesh")
-        ampersandPrimitives.crlf_to_LF("run")
+        simulationScript = ScriptGenerator.generate_simulation_script(self.simulationFlowSettings)
+        AmpersandPrimitives.write_dict_to_file(f"{self.project_path}/run", simulationScript)
+        
+        AmpersandPrimitives.crlf_to_LF(f"{self.project_path}/mesh")
+        AmpersandPrimitives.crlf_to_LF(f"{self.project_path}/run")
+        
         if os.name != 'nt':
-            os.chmod("mesh", 0o755)
-            os.chmod("run", 0o755)
-        # go back to the main directory
-        os.chdir("..")
-        ampersandIO.printMessage(
-            "\n-----------------------------------", GUIMode=self.GUIMode, window=self.window)
-        ampersandIO.printMessage(
-            "Project files created successfully!", GUIMode=self.GUIMode, window=self.window)
-        ampersandIO.printMessage(
-            "-----------------------------------\n", GUIMode=self.GUIMode, window=self.window)
-        return 0
+            os.chmod(f"{self.project_path}/mesh", 0o755)
+            os.chmod(f"{self.project_path}/run", 0o755)
+        
+        AmpersandIO.printMessage("\n-----------------------------------")
+        AmpersandIO.printMessage("Project files created successfully!")
+        AmpersandIO.printMessage("-----------------------------------\n")
 
-
-if __name__ == '__main__':
-    try:
-        from src.cli.create_project import create_project
-        create_project()
-    except KeyboardInterrupt:
-        ampersandIO.printMessage(
-            "\nKeyboardInterrupt detected! Aborting project creation")
-        exit()
-    except Exception as error:
-        ampersandIO.printError(error)
-        exit()

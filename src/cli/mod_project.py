@@ -17,7 +17,9 @@
  */
 """
 
-from src.primitives import AmpersandDataInput, ampersandIO
+from pathlib import Path
+from typing import Union
+from src.primitives import AmpersandDataInput, AmpersandIO, AmpersandPrimitives
 from src.constants import meshSettings, physicalProperties
 from src.project import AmpersandProject
 from src.utils.stl_analysis import StlAnalysis
@@ -25,6 +27,7 @@ from src.utils.stl_analysis import StlAnalysis
 
 # A collection of functions that are used to modify the project
 class ModProject:
+    @staticmethod
     def modify_project(project: AmpersandProject):
         if project.current_modification == "Background Mesh":
             ModProject.change_background_mesh(project)
@@ -46,59 +49,33 @@ class ModProject:
             ModProject.change_turbulenc_model(project)
         elif project.current_modification == "Post Processing Settings":
             ModProject.change_post_process_settings(project)
-        else:
-            ampersandIO.printMessage("Invalid option. Aborting operation")
-            return -1
-        return 0
+        
+        raise ValueError("Invalid option. Aborting operation")
 
-
-    @staticmethod
-    def ask_domain_size():
-        ampersandIO.printMessage(
-            "Domain size is the size of the computational domain in meters")
-        minX, minY, minZ = ampersandIO.get_input_vector("Xmin Ymin Zmin: ")
-        maxX, maxY, maxZ = ampersandIO.get_input_vector("Xmax Ymax Zmax: ")
-        # check if the values are valid
-        if (minX >= maxX or minY >= maxY or minZ >= maxZ):
-            ampersandIO.printMessage(
-                "Invalid domain size, please enter the values again")
-            ModProject.ask_domain_size()
-        return minX, maxX, minY, maxY, minZ, maxZ
-
-    @staticmethod
-    def ask_cell_size():
-        cellSize = ampersandIO.get_input_float(
-            "Enter the maximum cell size (m): ")
-        if (cellSize <= 0):
-            ampersandIO.printMessage(
-                "Invalid cell size, please enter the value again")
-            ModProject.ask_cell_size()
-        return cellSize
 
     @staticmethod
     def show_domain_size(bounds):
         minX, maxX, minY, maxY, minZ, maxZ = bounds
-        ampersandIO.printMessage(
-            f"Domain size: {maxX-minX}x{maxY-minY}x{maxZ-minZ} m")
+        AmpersandIO.printMessage(f"Domain size: {maxX-minX}x{maxY-minY}x{maxZ-minZ} m")
 
     @staticmethod
     # this is to change the global refinement level of the mesh
     def change_macro_refinement_level(project: AmpersandProject):
         refLevels = ["coarse", "medium", "fine"]
-        ampersandIO.printMessage(
+        AmpersandIO.printMessage(
             "Current refinement level: "+refLevels[meshSettings['fineLevel']])
         # ampersandIO.printMessage("Refinement level is the number of cells in the smallest direction")
-        refinementLevel = ampersandIO.get_input_int(
+        refinementLevel = AmpersandIO.get_input_int(
             "Enter new refinement level (0:coarse, 1:medium, 2:fine): ")
         if (refinementLevel < 0 or refinementLevel > 2):
-            ampersandIO.printMessage(
+            AmpersandIO.printMessage(
                 "Invalid refinement level, please enter the value again")
             ModProject.change_refinement_level(meshSettings)
         project.meshSettings['fineLevel'] = refinementLevel
         # return project
 
     @staticmethod
-    def change_domain_size(project, bounds):
+    def change_domain_size(project: AmpersandProject, bounds):
         minX, maxX, minY, maxY, minZ, maxZ = bounds
         ModProject.show_domain_size(bounds)
         project.meshSettings['domain']["minx"] = minX
@@ -110,7 +87,7 @@ class ModProject:
         # return project
 
     @staticmethod
-    def change_mesh_size(project, cellSize):
+    def change_mesh_size(project: AmpersandProject, cellSize: float):
         minX = project.meshSettings['domain']["minx"]
         maxX = project.meshSettings['domain']["maxx"]
         minY = project.meshSettings['domain']["miny"]
@@ -121,62 +98,60 @@ class ModProject:
         nx, ny, nz = StlAnalysis.calc_nx_ny_nz(domain, cellSize)
         # check if the values are not too large
         if (nx > 500 or ny > 500 or nz > 500):
-            ampersandIO.printMessage(
-                "Warning: Mesh is too fine. Consider increasing the cell size")
+            AmpersandIO.printMessage(
+                "Warning: Mesh is too fine. Consider increasing the cell size"
+            )
         project.meshSettings['domain']['nx'] = nx
         project.meshSettings['domain']['ny'] = ny
         project.meshSettings['domain']['nz'] = nz
         # return project
 
-    @staticmethod
-    def summarize_background_mesh(project: AmpersandProject):
-        project.summarize_background_mesh()
 
     @staticmethod
-    def change_stl_purpose(stl_, meshSettings):
-        stlFile = stl_['file']
-        ampersandIO.printMessage("Current STL file purpose: "+stl_['purpose'])
-        purpose = ampersandIO.get_input("Enter new STL file purpose: ")
-        stl_['purpose'] = purpose
-        return stl_
+    def change_stl_purpose(geometry, meshSettings):
+        stlFile = geometry['file']
+        AmpersandIO.printMessage(f"Current STL file purpose: {geometry['purpose']}")
+        purpose = AmpersandIO.get_input("Enter new STL file purpose: ")
+        geometry['purpose'] = purpose
+        return geometry
 
     # this will allow the user to change the details of the stl file if necessary
     @staticmethod
     def change_stl_details(project, stl_file_number=0):
         project.list_stl_files()
-        change_purpose = ampersandIO.get_input("Change any STL files (y/N)?: ")
+        change_purpose = AmpersandIO.get_input("Change any STL files (y/N)?: ")
         if change_purpose.lower() != 'y':
-            ampersandIO.printMessage("No change in STL files properties")
+            AmpersandIO.printMessage("No change in STL files properties")
             return 0
-        stl_file_number = ampersandIO.get_input(
+        stl_file_number = AmpersandIO.get_input(
             "Enter the number of the file to change purpose: ")
         try:
             stl_file_number = int(stl_file_number)
         except ValueError:
-            ampersandIO.printMessage("Invalid input. Please try again.")
+            AmpersandIO.printMessage("Invalid input. Please try again.")
             ModProject.change_stl_details()
             # return -1
         if stl_file_number < 0 or stl_file_number > len(project.stl_files):
-            ampersandIO.printMessage("Invalid input. Please try again.")
+            AmpersandIO.printMessage("Invalid input. Please try again.")
             ModProject.change_stl_details()
 
         stl_file = project.stl_files[stl_file_number]
         stl_name = stl_file['name']
-        purpose = project.ask_purpose()
+        purpose = AmpersandDataInput.get_purpose()
         # self.add_purpose_(stl_name,purpose)
         return 0
 
     # add purpose to the stl file. currently not used
     @staticmethod
     def add_purpose_(stl_files, stl_name, purpose='wall'):
-        ampersandIO.printMessage(f"Setting purpose of {stl_name} to")
+        AmpersandIO.printMessage(f"Setting purpose of {stl_name} to")
         for stl in stl_files:
             if stl['name'] == stl_name:
-                ampersandIO.printMessage(
+                AmpersandIO.printMessage(
                     f"Setting purpose of {stl_name} to {purpose}")
                 stl['purpose'] = purpose
                 return stl_files
-        ampersandIO.printMessage(
+        AmpersandIO.printMessage(
             f"STL file {stl_name} not found in the project")
         return -1
 
@@ -189,125 +164,130 @@ class ModProject:
 
     @staticmethod
     def change_background_mesh(project: AmpersandProject):
-        ampersandIO.printMessage("Current background mesh")
-        ModProject.summarize_background_mesh(project)
+        AmpersandIO.printMessage("Current background mesh")
+        project.summarize_background_mesh()
         # ask whether to change domain size
-        change_domain_size = ampersandIO.get_input_bool(
+        change_domain_size = AmpersandIO.get_input_bool(
             "Change domain size (y/N)?: ")
         # ask new domain size
         if change_domain_size:
-            bounds = ModProject.ask_domain_size()
+            bounds = AmpersandDataInput.get_domain_size()
             ModProject.change_domain_size(project, bounds)
-            ampersandIO.printMessage("Domain size changed")
+            AmpersandIO.printMessage("Domain size changed")
         # ask new cell size
-        change_mesh_size = ampersandIO.get_input_bool(
+        change_mesh_size = AmpersandIO.get_input_bool(
             "Change cell size (y/N)?: ")
         if change_mesh_size:
-            cellSize = ModProject.ask_cell_size()
+            cellSize = AmpersandDataInput.get_cell_size()
             project.meshSettings['maxCellSize'] = cellSize
             # calculate new mesh size
             ModProject.change_mesh_size(project, cellSize)
-            ampersandIO.printMessage("Cell size changed")
+            AmpersandIO.printMessage("Cell size changed")
         if change_domain_size or change_mesh_size:
-            ModProject.summarize_background_mesh(project)
+            project.summarize_background_mesh()
         else:
-            ampersandIO.printMessage("No change in background mesh")
+            AmpersandIO.printMessage("No change in background mesh")
 
     @staticmethod
     def add_geometry(project: AmpersandProject):
-        ampersandIO.printMessage("Adding geometry")
-        # TODO: Implement this function
-        project.add_stl_file()
+        AmpersandIO.printMessage("Adding geometry")
 
-        project.add_stl_to_project()
-        project.list_stl_files()
+        yN = AmpersandIO.get_input("Add STL file to the project (y/N)?: ")
+        while yN.lower() == 'y':
+            stl_path = AmpersandIO.get_file( [("STL Geometry", "*.stl"), ("OBJ Geometry", "*.obj")])
+            purpose = AmpersandDataInput.get_purpose()
+            project.add_stl_file(stl_path, purpose)
+            yN = AmpersandIO.get_input("Add another STL file to the project (y/N)?: ")
+        AmpersandPrimitives.list_stl_files(project.stl_files)
+
 
     @staticmethod
     def change_refinement_levels(project: AmpersandProject):
-        ampersandIO.printMessage("Changing refinement levels")
+        AmpersandIO.printMessage("Changing refinement levels")
         # TODO: Implement this function
-        project.list_stl_files()
-        stl_file_number = ampersandIO.get_input(
+        AmpersandPrimitives.list_stl_files(project.stl_files)
+
+        stl_file_number = AmpersandIO.get_input(
             "Enter the number of the file to change refinement level: ")
         try:
             stl_file_number = int(stl_file_number)
         except ValueError:
-            ampersandIO.printMessage("Invalid input. Please try again.")
+            AmpersandIO.printMessage("Invalid input. Please try again.")
         if stl_file_number <= 0 or stl_file_number > len(project.stl_files):
-            ampersandIO.printMessage("Invalid input. Please try again.")
+            AmpersandIO.printMessage("Invalid input. Please try again.")
         else:
             ModProject.change_stl_refinement_level(project, stl_file_number-1)
-        project.list_stl_files()
+        AmpersandPrimitives.list_stl_files(project.stl_files)
         return 0
 
     @staticmethod
     def change_mesh_point(project: AmpersandProject):
-        ampersandIO.printMessage("Changing mesh points")
+        AmpersandIO.printMessage("Changing mesh points")
         currentMeshPoint = project.meshSettings['castellatedMeshControls']['locationInMesh']
-        ampersandIO.printMessage(
+        AmpersandIO.printMessage(
             f"Current mesh points: ({currentMeshPoint[0]},{currentMeshPoint[1]},{currentMeshPoint[2]})")
 
-        x, y, z = ampersandIO.get_input_vector("Enter new mesh points: ")
+        x, y, z = AmpersandIO.get_input_vector("Enter new mesh points: ")
         project.meshSettings['castellatedMeshControls']['locationInMesh'] = [
             x, y, z]
-        ampersandIO.printMessage(
+        AmpersandIO.printMessage(
             f"New mesh points: ({currentMeshPoint[0]},{currentMeshPoint[1]},{currentMeshPoint[2]})")
 
     @staticmethod
     def change_boundary_conditions(project: AmpersandProject):
-        ampersandIO.printMessage("Changing boundary conditions")
+        AmpersandIO.printMessage("Changing boundary conditions")
         # TODO: Implement this function
         bcs = project.summarize_boundary_conditions()
         # ampersandIO.printMessage("Current boundary conditions")
         # ampersandIO.printMessage(bcs)
 
-        bc_number = ampersandIO.get_input(
+        bc_number = AmpersandIO.get_input(
             "Enter the number of the boundary to change: ")
         try:
             bc_number = int(bc_number)
         except ValueError:
-            ampersandIO.printMessage("Invalid input. Please try again.")
+            AmpersandIO.printMessage("Invalid input. Please try again.")
         if bc_number <= 0 or bc_number > len(bcs):
-            ampersandIO.printMessage("Invalid input. Please try again.")
+            AmpersandIO.printMessage("Invalid input. Please try again.")
         else:
             bc = bcs[bc_number-1]
-            ampersandIO.printMessage(
+            AmpersandIO.printMessage(
                 f"Changing boundary condition for patch: {bc}")
             newBcType = AmpersandDataInput.get_boundary_type()
             project.change_boundary_condition(bc, newBcType)
 
     @staticmethod
     def change_numerical_settings(project: AmpersandProject):
-        ampersandIO.printMessage("Changing numerical settings")
+        AmpersandIO.printMessage("Changing numerical settings")
         # TODO: Implement this function
 
     @staticmethod
     def change_simulation_settings(project: AmpersandProject):
-        ampersandIO.printMessage("Changing simulation settings")
+        AmpersandIO.printMessage("Changing simulation settings")
         # TODO: Implement this function
 
     @staticmethod
     def change_turbulenc_model(project: AmpersandProject):
-        ampersandIO.printMessage("Changing turbulence model")
+        AmpersandIO.printMessage("Changing turbulence model")
         # TODO: Implement this function
 
     @staticmethod
     def change_post_process_settings(project: AmpersandProject):
-        ampersandIO.printMessage("Changing post process settings")
+        AmpersandIO.printMessage("Changing post process settings")
         # TODO: Implement this function
 
     @staticmethod
     def change_fluid_properties(project: AmpersandProject):
-        ampersandIO.printMessage("Current fluid properties")
-        ampersandIO.printMessage(f"Density: {physicalProperties['rho']}")
-        ampersandIO.printMessage(
+        AmpersandIO.printMessage("Current fluid properties")
+        AmpersandIO.printMessage(f"Density: {physicalProperties['rho']}")
+        AmpersandIO.printMessage(
             f"Kinematic viscosity: {physicalProperties['nu']}")
-        rho = ampersandIO.get_input_float("Enter new density (kg/m^3): ")
-        nu = ampersandIO.get_input_float(
+        rho = AmpersandIO.get_input_float("Enter new density (kg/m^3): ")
+        nu = AmpersandIO.get_input_float(
             "Enter new kinematic viscosity (m^2/s): ")
         # check if the values are valid
         if (rho <= 0 or nu <= 0):
-            ampersandIO.printMessage(
+            AmpersandIO.printMessage(
                 "Invalid fluid properties, please enter the values again")
             ModProject.change_fluid_properties(project)
         project.physicalProperties['rho'] = rho
@@ -317,5 +297,4 @@ class ModProject:
 
 # this is to test the mod_project class
 if __name__ == "__main__":
-    project = ModProject()
-    project.ask_domain_size()
+    project = ModProject(AmpersandDataInput.get_domain_size())

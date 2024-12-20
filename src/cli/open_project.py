@@ -17,52 +17,47 @@
  */
 """
 
+from pathlib import Path
 from src.project import AmpersandProject
 from src.cli.mod_project import ModProject
-from src.primitives import ampersandPrimitives, ampersandIO
+from src.primitives import AmpersandPrimitives, AmpersandIO
 import os
 
+from src.services.project_service import ProjectService
 
 def open_project():
-    project = AmpersandProject()
-    # Clear the screen
-    os.system('cls' if os.name == 'nt' else 'clear')
-    ampersandIO.printMessage("Please select the project directory to open")
-    projectFound = project.set_project_path(
-        ampersandPrimitives.ask_for_directory())
-    ampersandIO.printMessage(f"Project path: {project.project_path}")
-    if projectFound == -1:
-        ampersandIO.printError("No project found. Exiting the program")
-        return -1
-    ampersandIO.printMessage("Loading the project")
-    project.go_inside_directory()
+    AmpersandIO.printMessage("Please select the project directory to open")
+    
+    parent_directory = AmpersandPrimitives.ask_for_directory()
+    project_name = AmpersandIO.get_input("Enter the project name: ")
+    project_path = Path(f"{parent_directory}/{project_name}")
 
-    project.load_settings()
-    project.check_0_directory()
-    ampersandIO.printMessage("Project loaded successfully")
+
+    project = ProjectService.load_project(project_path)
+
+    AmpersandIO.printMessage("Project loaded successfully")
     project.summarize_project()
     # project.list_stl_files()
-    modify_project = ampersandIO.get_input_bool(
+    modify_project = AmpersandIO.get_input_bool(
         "Do you want to modify the project settings (y/N)?: ")
     project_modified = False  # flag to check if the project has been modified
+   
     while modify_project:
-        project.load_settings()
         project.choose_modification_categorized()
-        ModProject.modify_project()
+        ModProject.modify_project(project)
         project.write_settings()
         project_modified = True
-        modify_project = ampersandIO.get_input_bool(
-            "Do you want to modify another settings (y/N)?: ")
+        modify_project = AmpersandIO.get_input_bool("Do you want to modify another settings (y/N)?: ")
     # project.choose_modification()
     if project_modified:  # if the project is modified at least once
-        ampersandIO.printMessage(
+        AmpersandIO.printMessage(
             "Generating the project files based on the new settings")
         # if everything is successful, write the settings to the project_settings.yaml file
         project.write_settings()
         # Then create the project files with the new settings
-        project.create_project_files()
+        project.write_project_files()
     else:
-        ampersandIO.printMessage(
+        AmpersandIO.printMessage(
             "No modifications were made to the project settings")
     return 0
 
@@ -72,7 +67,7 @@ if __name__ == '__main__':
     try:
         open_project()
     except KeyboardInterrupt:
-        ampersandIO.printMessage(
+        AmpersandIO.printMessage(
             "\nKeyboardInterrupt detected! Aborting project creation")
         exit()
     # except Exception as error:

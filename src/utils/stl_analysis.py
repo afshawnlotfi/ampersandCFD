@@ -18,12 +18,14 @@
 """
 
 import os
+from pathlib import Path
+from typing import Union
 import vtk
 import numpy as np
 import math
 from src.thirdparty.stlToOpenFOAM import find_inside_point, is_point_inside, read_stl_file
 from src.thirdparty.stlToOpenFOAM import extract_curvature_data, compute_curvature
-from src.primitives import ampersandIO
+from src.primitives import AmpersandIO
 
 
 class StlAnalysis:
@@ -317,7 +319,7 @@ class StlAnalysis:
     @staticmethod
     def calc_mesh_settings(stlBoundingBox, nu=1e-6, rho=1000., U=1.0, maxCellSize=0.5, sizeFactor=1.0,
                            expansion_ratio=1.5, onGround=False, internalFlow=False, refinement=1,
-                           nLayers=5, halfModel=False, thicknessRatio=0.3, GUI=False, window=None):
+                           nLayers=5, halfModel=False, thicknessRatio=0.3, GUI=False):
         maxSTLLength = StlAnalysis.getMaxSTLDim(stlBoundingBox)
         minSTLLength = StlAnalysis.getMinSTLDim(stlBoundingBox)
         if (maxCellSize < 0.001):
@@ -396,36 +398,24 @@ class StlAnalysis:
 
         # minVolumeSize = backgroundCellSize**3/(8.**refLevel*20.)
         # print the summary of results
-        ampersandIO.printMessage(
-            "\n-----------------Mesh Settings-----------------", GUIMode=GUI, window=window)
-        ampersandIO.printMessage(f"Domain size: x({domain_size[0]:6.3f}~{domain_size[1]:6.3f}) y({domain_size[2]:6.3f}~{
-                                 domain_size[3]:6.3f}) z({domain_size[4]:6.3f}~{domain_size[5]:6.3f})", GUIMode=GUI, window=window)
-        ampersandIO.printMessage(f"Nx Ny Nz: {nx},{ny},{
-                                 nz}", GUIMode=GUI, window=window)
-        ampersandIO.printMessage(
-            f"Max cell size: {backgroundCellSize}", GUIMode=GUI, window=window)
-        ampersandIO.printMessage(
-            f"Min cell size: {targetCellSize}", GUIMode=GUI, window=window)
-        ampersandIO.printMessage(
-            f"Refinement Level:{refLevel}", GUIMode=GUI, window=window)
+        AmpersandIO.printMessage(
+            "\n-----------------Mesh Settings-----------------")
+        AmpersandIO.printMessage(f"Domain size: x({domain_size[0]:6.3f}~{domain_size[1]:6.3f}) y({domain_size[2]:6.3f}~{
+                                 domain_size[3]:6.3f}) z({domain_size[4]:6.3f}~{domain_size[5]:6.3f})")
+        AmpersandIO.printMessage(f"Nx Ny Nz: {nx},{ny},{nz}")
+        AmpersandIO.printMessage(f"Max cell size: {backgroundCellSize}")
+        AmpersandIO.printMessage(f"Min cell size: {targetCellSize}")
+        AmpersandIO.printMessage(f"Refinement Level:{refLevel}")
 
-        ampersandIO.printMessage(
-            "\n-----------------Turbulence-----------------", GUIMode=GUI, window=window)
-        ampersandIO.printMessage(
-            f"Target yPlus:{target_yPlus}", GUIMode=GUI, window=window)
-        ampersandIO.printMessage(
-            f'Reynolds number:{U*L/nu}', GUIMode=GUI, window=window)
-        ampersandIO.printMessage(f"Boundary layer thickness:{
-                                 delta}", GUIMode=GUI, window=window)
-        ampersandIO.printMessage(f"First layer thickness:{
-                                 adjustedNearWallThickness}", GUIMode=GUI, window=window)
-        ampersandIO.printMessage(f"Final layer thickness:{
-                                 finalLayerThickness}", GUIMode=GUI, window=window)
-        ampersandIO.printMessage(
-            f"YPlus:{adjustedYPlus}", GUIMode=GUI, window=window)
-
-        ampersandIO.printMessage(
-            f"Number of layers:{nLayers}", GUIMode=GUI, window=window)
+        AmpersandIO.printMessage(
+            "\n-----------------Turbulence-----------------")
+        AmpersandIO.printMessage(f"Target yPlus:{target_yPlus}")
+        AmpersandIO.printMessage(f'Reynolds number:{U*L/nu}')
+        AmpersandIO.printMessage(f"Boundary layer thickness:{delta}")
+        AmpersandIO.printMessage(f"First layer thickness:{adjustedNearWallThickness}")
+        AmpersandIO.printMessage(f"Final layer thickness:{finalLayerThickness}")
+        AmpersandIO.printMessage(f"YPlus:{adjustedYPlus}")
+        AmpersandIO.printMessage(f"Number of layers:{nLayers}")
         return domain_size, nx, ny, nz, refLevel, finalLayerThickness, nLayers
 
     @staticmethod
@@ -485,8 +475,7 @@ class StlAnalysis:
 
     @staticmethod
     def set_mesh_location(meshSettings, stl_file_path, internalFlow=False):
-        center_of_mass, insidePoint, outsidePoint = StlAnalysis.analyze_stl(
-            stl_file_path)
+        center_of_mass, insidePoint, outsidePoint = StlAnalysis.analyze_stl(stl_file_path)
         if internalFlow:
             meshSettings['castellatedMeshControls']['locationInMesh'] = [
                 insidePoint[0], insidePoint[1], insidePoint[2]]
@@ -495,51 +484,54 @@ class StlAnalysis:
                 outsidePoint[0], outsidePoint[1], outsidePoint[2]]
         return meshSettings
 
-    @staticmethod
-    def set_stl_solid_name(stl_file='input.stl'):
-        ampersandIO.printMessage(f"Setting solid name for {stl_file}")
-        # if the file does not exist, return -1
-        if not os.path.exists(stl_file):
-            print(f"File not found: {stl_file}")
-            return -1
-        # if exists, extract file name by removing the directory path
-        new_lines = []
-        new_stl_file = stl_file[:-4] + ".stl"
-        solid_name = os.path.basename(stl_file)[:-4]
-        # print(f"Solid name: {solid_name}")
-        # open the file
+    @staticmethod 
+    def set_stl_solid_name(stl_file: Union[str, Path]) -> int:
+        """
+        Sets/updates the solid name in an STL file to match the filename.
+        
+        Args:
+            stl_file: Path to STL file as string or Path object
+            
+        Returns:
+            0 on success, -1 on failure
+            
+        Raises:
+            FileNotFoundError: If STL file does not exist
+            PermissionError: If lacking write permissions
+            UnicodeDecodeError: If file has invalid encoding
+        """
         try:
-            with open(stl_file, 'r') as f:
-                lines = f.readlines()
-        except FileNotFoundError:
-            print(f"File not found: {stl_file}")
-            return -1
-        # find the solid name
-        for line in lines:
-            if 'endsolid' in line:
-                # replace the solid name using above solid_name
-                line = f"endsolid {solid_name}\n"
-            # replace the endsolid name
-            elif 'solid' in line:
-                line = f"solid {solid_name}\n"
-            else:
-                pass
-            new_lines.append(line)
-        # print(f"Solid name: {solid_name}")
-        # write the new lines to the file
-        try:
-            with open(new_stl_file, 'w') as f:
-                f.writelines(new_lines)
-        except FileNotFoundError:
-            print(f"File not found: {new_stl_file}")
-            return -1
-        return 0
+            stl_path = Path(stl_file)
+            AmpersandIO.printMessage(f"Setting solid name for {stl_path}")
+            
+            if not stl_path.exists():
+                raise FileNotFoundError(f"STL file not found: {stl_path}")
 
+            if not stl_path.is_file():
+                raise ValueError(f"Path is not a file: {stl_path}")
 
-def main():
-    stl_file = "stl/ahmed.stl"
-    minCurv = StlAnalysis.calc_smallest_curvature(stl_file)
+            # Extract solid name from filename without extension
+            solid_name = stl_path.stem
+
+            # Read and process file contents
+            lines = stl_path.read_text().splitlines()
+            new_lines = []
+            for line in lines:
+                if 'endsolid' in line.lower():
+                    line = f"endsolid {solid_name}"
+                elif line.lower().lstrip().startswith('solid'):
+                    line = f"solid {solid_name}"
+                new_lines.append(line + '\n')
+            
+            # Write back to file
+            stl_path.write_text(''.join(new_lines))
+            return 0
+
+        except (FileNotFoundError, PermissionError, UnicodeDecodeError) as e:
+            AmpersandIO.printMessage(f"Error processing STL file: {e}")
+            return -1
 
 
 if __name__ == "__main__":
-    main()
+    stl_file = "stl/ahmed.stl"
+    minCurv = StlAnalysis.calc_smallest_curvature(stl_file)

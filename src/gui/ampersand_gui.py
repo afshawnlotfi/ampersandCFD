@@ -1,3 +1,5 @@
+from pathlib import Path
+from typing import Union
 from PySide6.QtWidgets import QApplication
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtWidgets import QVBoxLayout
@@ -5,7 +7,8 @@ from PySide6.QtCore import QFile
 from PySide6.QtWidgets import QMainWindow
 from PySide6 import QtWidgets
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
-from src.gui.dialogBoxes import sphereDialogDriver, yesNoDialogDriver, yesNoCancelDialogDriver
+from src.cli.mod_project import ModProject
+from src.gui.dialogBoxes import sphereDialogDriver, yesNoCancelDialogDriver
 # ----------------- VTK Libraries ----------------- #
 import vtk
 # noinspection PyUnresolvedReferences
@@ -27,7 +30,8 @@ from time import sleep
 
 # Connection to the Ampersand Backend
 from project import AmpersandProject
-from src.primitives import ampersandPrimitives, ampersandIO
+from src.primitives import AmpersandDataInput, AmpersandPrimitives, AmpersandIO
+from src.services.project_service import ProjectService
 
 
 loader = QUiLoader()
@@ -53,12 +57,12 @@ def readSTL(stlFileName="cylinder.stl"):
 
 # This is the main window class
 class mainWindow(QMainWindow):
+    project: AmpersandProject
     def __init__(self):
         super().__init__()
         self.load_ui()
         self.surfaces = []
         self.project_opened = False
-        self.project = None  # ampersandProject(GUIMode=True,window=self)
         self.minx, self.miny, self.minz = 0.0, 0.0, 0.0
         self.maxx, self.maxy, self.maxz = 0.0, 0.0, 0.0
         self.nx, self.ny, self.nz = 0, 0, 0
@@ -202,11 +206,11 @@ class mainWindow(QMainWindow):
         # self.iren.Start()
 
     # this function will read STL file and show it in the VTK renderer
-    def showSTL(self, stlFile=r"C:\Users\mrtha\Desktop\GitHub\foamAutoGUI\src\pipe.stl"):
+    def showSTL(self, stlFile: Union[str, Path]):
         # Read stl
         try:
             self.reader = vtk.vtkSTLReader()
-            self.reader.SetFileName(stlFile)
+            self.reader.SetFileName(str(stlFile))
             self.render3D()
         except:
             print("Reading STL not successful. Try again")
@@ -323,7 +327,7 @@ class mainWindow(QMainWindow):
         self.iren.Start()
 
     def loadSTL(self, stlFile=r"C:\Users\mrtha\Desktop\GitHub\foamAutoGUI\src\pipe.stl"):
-        ampersandIO.printMessage("Loading STL file")
+        AmpersandIO.printMessage("Loading STL file")
         stl_name = stlFile.split("/")[-1]
         if (stl_name in self.surfaces):
             self.updateStatusBar("STL file already loaded")
@@ -385,23 +389,18 @@ class mainWindow(QMainWindow):
         # self.updateStatusBar("Opening STL")
         # self.openSTL()
         # self.readyStatusBar()
-        stl_status = self.project.add_stl_file()
-        if stl_status == -1:
-            # ampersandIO.printError("STL file not loaded",GUIMode=True,window=self)
-            return
-        # self.project.analyze_stl_file()
-        self.project.add_stl_to_project()
+        ModProject.add_geometry(self.project)
         self.showSTL(stlFile=self.project.current_stl_file)
         self.update_list()
         # self.project.list_stl_files()
 
     def createSphere(self):
         # print("Create Sphere")
-        ampersandIO.printMessage("Creating Sphere", GUIMode=True, window=self)
+        AmpersandIO.printMessage("Creating Sphere")
         # create a sphere dialog
         sphereData = sphereDialogDriver()
         if sphereData == None:
-            ampersandIO.printError("Sphere Dialog Box Closed", GUIMode=True)
+            AmpersandIO.printError("Sphere Dialog Box Closed")
         else:
             x, y, z, r = sphereData
             print("Center: ", x, y, z)
@@ -454,38 +453,23 @@ class mainWindow(QMainWindow):
         self.ren.RemoveAllViewProps()
         # clear the list widget
         self.window.listWidgetObjList.clear()
-        self.project = AmpersandProject(GUIMode=True, window=self)
+        AmpersandIO.window = self.window
+        AmpersandIO.GUIMode = True
 
-        self.project.set_project_directory(
-            ampersandPrimitives.ask_for_directory(qt=True))
-        if self.project.project_directory_path == None:
-            ampersandIO.printMessage(
-                "No project directory selected.", GUIMode=True, window=self)
-            self.readyStatusBar()
-            return
-        project_name = ampersandIO.get_input(
-            "Enter the project name: ", GUIMode=True)
-        if project_name == None:
-            ampersandIO.printError("Project Name not entered", GUIMode=True)
-            self.readyStatusBar()
-            return
-        self.project.set_project_name(project_name)
+        parent_directory = AmpersandPrimitives.ask_for_directory(qt=True)
+        project_name = AmpersandIO.get_input("Enter the project name: ")
+        project_path = f"{parent_directory}/{project_name}"
 
-        self.project.create_project_path()
-        ampersandIO.printMessage(
-            "Creating the project", GUIMode=True, window=self)
-        ampersandIO.printMessage(
-            f"Project path: {self.project.project_path}", GUIMode=True, window=self)
-        self.project.create_project()
-        self.project.create_settings()
+        self.project = ProjectService.create_project(project_path)
 
-        self.project.set_global_refinement_level()
+
+        self.project.set_refinement_level()
         # Now enable the buttons
         self.enableButtons()
         self.readyStatusBar()
         self.project_opened = True
-        ampersandIO.printMessage(
-            f"Project {project_name} created", GUIMode=True, window=self)
+        AmpersandIO.printMessage(
+            f"Project {project_name} created")
 
         # change window title
         self.window.setWindowTitle(f"Case Creator: {project_name}")
@@ -498,7 +482,8 @@ class mainWindow(QMainWindow):
                 "Save changes to current case files before creating a New Case", "Save Changes")
             if yNC == 1:  # if yes
                 # save the project
-                self.project.add_stl_to_project()
+
+                self.project.add_stl_file()
                 self.project.write_settings()
                 self.disableButtons()
                 self.ren.RemoveAllViewProps()
@@ -512,41 +497,34 @@ class mainWindow(QMainWindow):
                 self.readyStatusBar()
                 return
         self.updateStatusBar("Opening Case")
-        self.project = AmpersandProject(GUIMode=True, window=self)
+        AmpersandIO.window = self
+        AmpersandIO.GUIMode = True
 
         # clear vtk renderer
         self.ren.RemoveAllViewProps()
         # clear the list widget
         self.window.listWidgetObjList.clear()
-        projectFound = self.project.set_project_path(
-            ampersandPrimitives.ask_for_directory(qt=True))
+        
+        project_path = AmpersandPrimitives.ask_for_directory(qt=True)
 
-        if projectFound == -1:
-            ampersandIO.printWarning(
-                "No project found. Failed to open case directory.", GUIMode=True)
-            self.readyStatusBar()
-            return -1
-        ampersandIO.printMessage(
-            f"Project path: {self.project.project_path}", GUIMode=True, window=self)
-        ampersandIO.printMessage(
-            "Loading the project", GUIMode=True, window=self)
-        self.project.go_inside_directory()
+        AmpersandIO.printMessage(f"Project path: {project_path}")
+        AmpersandIO.printMessage("Loading the project")
 
         self.project.load_settings()
-        self.project.check_0_directory()
-        ampersandIO.printMessage(
-            "Project loaded successfully", GUIMode=True, window=self)
+        ProjectService.validate_project(self.project)
+        AmpersandIO.printMessage("Project loaded successfully")
+
         self.project.summarize_project()
         self.enableButtons()
         self.autoDomain()
         self.update_list()
-        stl_file_paths = self.project.list_stl_paths()
+        stl_file_paths = self.project.list_stl_paths(project_path)
         for stl_file in stl_file_paths:
             self.showSTL(stlFile=stl_file)
         self.readyStatusBar()
         self.project_opened = True
-        ampersandIO.printMessage(
-            f"Project {self.project.project_name} created", GUIMode=True, window=self)
+        AmpersandIO.printMessage(
+            f"Project {self.project.project_name} created")
 
         # change window title
         self.setWindowTitle(f"Case Creator: {self.project.project_name}")
@@ -554,17 +532,12 @@ class mainWindow(QMainWindow):
 
     def generateCase(self):
         self.updateStatusBar("Analyzing Case")
-        if (len(self.project.stl_files) > 0):
-            self.project.analyze_stl_file()
         self.updateStatusBar("Creating Project Files")
         self.project.useFOs = True
         self.project.set_post_process_settings()
-        # project.list_stl_files()
         self.project.summarize_project()
-        # project.analyze_stl_file()
-
         self.project.write_settings()
-        self.project.create_project_files()
+        self.project.write_project_files()
         self.readyStatusBar()
 
     def autoDomain(self):
@@ -573,7 +546,6 @@ class mainWindow(QMainWindow):
         onGround = self.window.checkBoxOnGround.isChecked()
         self.project.meshSettings['onGround'] = onGround
         self.project.on_ground = onGround
-        self.project.analyze_stl_file()
         print("On Ground: ", onGround)
         minx = self.project.meshSettings['domain']['minx']
         miny = self.project.meshSettings['domain']['miny']
@@ -607,11 +579,11 @@ class mainWindow(QMainWindow):
         ny = int(self.window.lineEdit_nY.text())
         nz = int(self.window.lineEdit_nZ.text())
         if (nx <= 0 or ny <= 0 or nz <= 0):
-            ampersandIO.printError("Invalid Domain Size", GUIMode=True)
+            AmpersandIO.printError("Invalid Domain Size")
             self.readyStatusBar()
             return
         if (minx > maxx or miny > maxy or minz > maxz):
-            ampersandIO.printError("Invalid Domain Size", GUIMode=True)
+            AmpersandIO.printError("Invalid Domain Size")
             self.readyStatusBar()
             return
         self.project.meshSettings['domain']['minx'] = minx

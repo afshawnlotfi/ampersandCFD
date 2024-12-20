@@ -19,7 +19,7 @@
 """
 
 from src.constants import meshSettings
-from src.primitives import ampersandPrimitives
+from src.primitives import AmpersandPrimitives
 
 
 def generate_snappyHexMeshDict(meshSettings: dict):
@@ -35,7 +35,7 @@ def generate_snappyHexMeshDict(meshSettings: dict):
     str: The content of the snappyHexMeshDict file as a string.
     """
     snappyHexMeshDict = f""
-    header = ampersandPrimitives.createFoamHeader(
+    header = AmpersandPrimitives.createFoamHeader(
         className="dictionary", objectName="snappyHexMeshDict")
 
     steps = f"""

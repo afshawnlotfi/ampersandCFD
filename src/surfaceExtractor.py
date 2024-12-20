@@ -18,12 +18,12 @@
 """
 
 import yaml
-from src.primitives import ampersandPrimitives
+from src.primitives import AmpersandPrimitives
 from src.constants import meshSettings
 
 
 def create_surfaceFeatureExtractDict(meshSettings):
-    header = ampersandPrimitives.createFoamHeader(
+    header = AmpersandPrimitives.createFoamHeader(
         className="dictionary", objectName="surfaceFeatureExtractDict")
     surfaceFeatureExtractDict = f""+header
     for anEntry in meshSettings['geometry']:
@@ -46,7 +46,7 @@ def create_surfaceFeatureExtractDict(meshSettings):
 
 
 if __name__ == "__main__":
-    meshSettings = ampersandPrimitives.yaml_to_dict('meshSettings.yaml')
+    meshSettings = AmpersandPrimitives.yaml_to_dict('meshSettings.yaml')
     surfaceFeatureExtractDict = create_surfaceFeatureExtractDict(meshSettings)
     # print(surfaceFeatureExtractDict)
     with open('surfaceFeatureExtractDict', 'w') as file:

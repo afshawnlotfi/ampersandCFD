@@ -19,10 +19,10 @@
 """
 
 from src.constants import meshSettings
-from src.primitives import ampersandPrimitives
+from src.primitives import AmpersandPrimitives
 
 def generate_blockMeshDict(meshSettings: dict):
-    header = ampersandPrimitives.createFoamHeader(className="dictionary", objectName="blockMeshDict")
+    header = AmpersandPrimitives.createFoamHeader(className="dictionary", objectName="blockMeshDict")
     blockMeshDict = header+f"""
 
 // ********* Domain *********

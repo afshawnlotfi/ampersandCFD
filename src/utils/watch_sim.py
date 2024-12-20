@@ -17,11 +17,15 @@
  */
 """
 
+from pathlib import Path
 import matplotlib.pyplot as plt
 import time
 from src.project import AmpersandProject
-from src.primitives import ampersandPrimitives, ampersandIO
+from src.primitives import AmpersandPrimitives, AmpersandIO
 import os
+
+from src.services.project_service import ProjectService
+
 
 # this code is to watch the simulation convergence
 
@@ -184,28 +188,21 @@ def watch_residuals_live(logfile, interval=500):
 
 
 def watch_sim():
-    project = AmpersandProject()
-    # Clear the screen
-    os.system('cls' if os.name == 'nt' else 'clear')
-    ampersandIO.printMessage("Please select the project directory to open")
-    projectFound = project.set_project_path(
-        ampersandPrimitives.ask_for_directory())
-    ampersandIO.printMessage(f"Project path: {project.project_path}")
-    if projectFound == -1:
-        ampersandIO.printError("No project found. Exiting the program")
-        return -1
-    ampersandIO.printMessage("Loading the project")
-    project.go_inside_directory()
+    AmpersandIO.printMessage("Please select the project directory to open")
 
-    project.load_settings()
-    project.check_0_directory()
-    ampersandIO.printMessage("Project loaded successfully")
+    parent_directory = AmpersandPrimitives.ask_for_directory()
+    project_name = AmpersandIO.get_input("Enter the project name: ")
+    project_path = Path(f"{parent_directory}/{project_name}")
+
+    project = ProjectService.load_project(project_path)
+
+    AmpersandIO.printMessage("Project loaded successfully")
     project.summarize_project()
-    if project.check_log_files():
+    if ProjectService.check_log_files(project_path):
         watch_residuals('log.simpleFoam')
-    if project.check_post_process_files():
+    if ProjectService.check_post_process_files(project_path):
         watch_field('postProcessing/probe/0/U', 'postProcessing/probe/0/p')
-    if project.check_forces_files():
+    if ProjectService.check_forces_files(project_path):
         watch_forces('postProcessing/forces/0/force.dat')
     return 0
 

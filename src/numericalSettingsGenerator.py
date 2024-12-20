@@ -17,7 +17,7 @@
  */
 """
 
-from src.primitives import ampersandPrimitives
+from src.primitives import AmpersandPrimitives
 
 
 def create_algorithmDict(numericalSettings):
@@ -133,7 +133,7 @@ def create_solverFinalDict(solverSettings, solverName="U"):
 
 
 def create_fvSolutionDict(numericalSettings, solverSettings):
-    header = ampersandPrimitives.createFoamHeader(
+    header = AmpersandPrimitives.createFoamHeader(
         className="dictionary", objectName="fvSolution")
     fvSolutionDict = f""+header
     fvSolutionDict += f"""
@@ -151,7 +151,7 @@ solvers
 
 
 def create_fvSchemesDict(numericalSettings):
-    header = ampersandPrimitives.createFoamHeader(
+    header = AmpersandPrimitives.createFoamHeader(
         className="dictionary", objectName="fvSchemes")
     fvSchemesDict = f""+header
     fvSchemesDict += f"""

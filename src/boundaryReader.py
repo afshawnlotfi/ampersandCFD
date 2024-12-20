@@ -19,14 +19,14 @@
 
 # This file reads the boundary file and extracts the boundary patches
 
-from src.primitives import ampersandIO
+from src.primitives import AmpersandIO
 import os
 
 
 def check_boundary_file(boundary_file="constant/polyMesh/boundary"):
     # check if the boundary file exists
     if not os.path.exists(boundary_file):
-        ampersandIO.printError(f"Boundary file {boundary_file} does not exist")
+        AmpersandIO.printError(f"Boundary file {boundary_file} does not exist")
         return False
     return True
 
@@ -80,10 +80,10 @@ def read_boundary(boundary_file="constant/polyMesh/boundary"):
 
 def list_patches(boundary_patches):
     patchNames = boundary_patches.keys()
-    ampersandIO.printMessage("Patch name\tType")
-    ampersandIO.printMessage("---------\t----")
+    AmpersandIO.printMessage("Patch name\tType")
+    AmpersandIO.printMessage("---------\t----")
     for patch in patchNames:
-        ampersandIO.printMessage(f"{patch}\t\t{boundary_patches[patch]}")
+        AmpersandIO.printMessage(f"{patch}\t\t{boundary_patches[patch]}")
 
 
 if __name__ == '__main__':

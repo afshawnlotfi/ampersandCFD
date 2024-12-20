@@ -22,7 +22,7 @@
 # The boundary conditions are specified in the meshSettings.yaml file.
 # This is an early version of the script and will be updated in the future.
 # Brute force writing is used instead of a more elegant solution.
-from src.primitives import ampersandPrimitives
+from src.primitives import AmpersandPrimitives
 from src.constants import meshSettings, boundaryConditions
 from src.utils.stl_analysis import StlAnalysis
 
@@ -32,10 +32,10 @@ def tuple_to_string(t):
 
 
 def create_u_file(meshSettings: dict, boundaryConditions: dict):
-    header = ampersandPrimitives.createFoamHeader(
+    header = AmpersandPrimitives.createFoamHeader(
         className="volVectorField", objectName="U")
-    dims = ampersandPrimitives.createDimensions(M=0, L=1, T=-1)
-    internalField = ampersandPrimitives.createInternalFieldVector(
+    dims = AmpersandPrimitives.createDimensions(M=0, L=1, T=-1)
+    internalField = AmpersandPrimitives.createInternalFieldVector(
         type="uniform", value=boundaryConditions['velocityInlet']['u_value'])
     U_file = f""+header+dims+internalField+"\n"+"""\nboundaryField 
 {
@@ -136,10 +136,10 @@ def create_u_file(meshSettings: dict, boundaryConditions: dict):
 
 
 def create_p_file(meshSettings, boundaryConditions):
-    header = ampersandPrimitives.createFoamHeader(
+    header = AmpersandPrimitives.createFoamHeader(
         className="volScalarField", objectName="p")
-    dims = ampersandPrimitives.createDimensions(M=0, L=2, T=-2)
-    internalField = ampersandPrimitives.createInternalFieldScalar(
+    dims = AmpersandPrimitives.createDimensions(M=0, L=2, T=-2)
+    internalField = AmpersandPrimitives.createInternalFieldScalar(
         type="uniform", value=0)
     p_file = f""+header+dims+internalField+"\n"+"""\nboundaryField 
 {
@@ -229,10 +229,10 @@ def create_p_file(meshSettings, boundaryConditions):
 
 
 def create_k_file(meshSettings, boundaryConditions, nu=1.0e-5):
-    header = ampersandPrimitives.createFoamHeader(
+    header = AmpersandPrimitives.createFoamHeader(
         className="volScalarField", objectName="k")
-    dims = ampersandPrimitives.createDimensions(M=0, L=2, T=-2)
-    internalField = ampersandPrimitives.createInternalFieldScalar(
+    dims = AmpersandPrimitives.createDimensions(M=0, L=2, T=-2)
+    internalField = AmpersandPrimitives.createInternalFieldScalar(
         type="uniform", value=1.0e-6)
     k_file = f""+header+dims+internalField+"\n"+"""\nboundaryField 
 {
@@ -245,7 +245,7 @@ def create_k_file(meshSettings, boundaryConditions, nu=1.0e-5):
             k_file += f"""
     {patch['name']}"""
             if (patch['type'] == 'patch' and patch['name'] == 'inlet'):
-                Umag = ampersandPrimitives.calc_Umag(
+                Umag = AmpersandPrimitives.calc_Umag(
                     boundaryConditions['velocityInlet']['u_value'])
                 I = 0.05  # turbulence intensity in %
                 k = 1.5*(Umag*I)**2
@@ -306,7 +306,7 @@ def create_k_file(meshSettings, boundaryConditions, nu=1.0e-5):
                 if (patch['bounds'] != None):
                     charLen = StlAnalysis.getMaxSTLDim(patch['bounds'])
                     l = 0.07*charLen  # turbulent length scale
-                    Umag = ampersandPrimitives.calc_Umag(patch['property'])
+                    Umag = AmpersandPrimitives.calc_Umag(patch['property'])
                     I = 0.01  # turbulence intensity in %
                     k = 1.5*(Umag*I)**2
                 else:
@@ -335,10 +335,10 @@ def create_k_file(meshSettings, boundaryConditions, nu=1.0e-5):
 
 
 def create_omega_file(meshSettings, boundaryConditions, nu=1.0e-5):
-    header = ampersandPrimitives.createFoamHeader(
+    header = AmpersandPrimitives.createFoamHeader(
         className="volScalarField", objectName="omega")
-    dims = ampersandPrimitives.createDimensions(M=0, L=0, T=-1)
-    internalField = ampersandPrimitives.createInternalFieldScalar(
+    dims = AmpersandPrimitives.createDimensions(M=0, L=0, T=-1)
+    internalField = AmpersandPrimitives.createInternalFieldScalar(
         type="uniform", value=1.0e-6)
     omega_file = f""+header+dims+internalField+"\n"+"""\nboundaryField 
 {
@@ -351,7 +351,7 @@ def create_omega_file(meshSettings, boundaryConditions, nu=1.0e-5):
             omega_file += f"""
     {patch['name']}"""
             if (patch['type'] == 'patch' and patch['name'] == 'inlet'):
-                Umag = ampersandPrimitives.calc_Umag(
+                Umag = AmpersandPrimitives.calc_Umag(
                     boundaryConditions['velocityInlet']['u_value'])
                 I = 0.05  # turbulence intensity in %
                 k = 1.5*(Umag*I)**2
@@ -416,7 +416,7 @@ def create_omega_file(meshSettings, boundaryConditions, nu=1.0e-5):
                 if (patch['bounds'] != None):
                     charLen = StlAnalysis.getMaxSTLDim(patch['bounds'])
                     l = 0.07*charLen  # turbulent length scale
-                    Umag = ampersandPrimitives.calc_Umag(patch['property'])
+                    Umag = AmpersandPrimitives.calc_Umag(patch['property'])
                     I = 0.01  # turbulence intensity in %
                     k = 1.5*(Umag*I)**2
                     omega = 0.09**(-1./4.)*k**0.5/l
@@ -446,10 +446,10 @@ def create_omega_file(meshSettings, boundaryConditions, nu=1.0e-5):
 
 
 def create_epsilon_file(meshSettings, boundaryConditions, nu=1.0e-5):
-    header = ampersandPrimitives.createFoamHeader(
+    header = AmpersandPrimitives.createFoamHeader(
         className="volScalarField", objectName="epsilon")
-    dims = ampersandPrimitives.createDimensions(M=0, L=2, T=-3)
-    internalField = ampersandPrimitives.createInternalFieldScalar(
+    dims = AmpersandPrimitives.createDimensions(M=0, L=2, T=-3)
+    internalField = AmpersandPrimitives.createInternalFieldScalar(
         type="uniform", value=1.0e-6)
     epsilon_file = f""+header+dims+internalField+"\n"+"""\nboundaryField 
 {
@@ -462,7 +462,7 @@ def create_epsilon_file(meshSettings, boundaryConditions, nu=1.0e-5):
             epsilon_file += f"""
     {patch['name']}"""
             if (patch['type'] == 'patch' and patch['name'] == 'inlet'):
-                Umag = ampersandPrimitives.calc_Umag(
+                Umag = AmpersandPrimitives.calc_Umag(
                     boundaryConditions['velocityInlet']['u_value'])
                 I = 0.05  # turbulence intensity in %
                 k = 1.5*(Umag*I)**2
@@ -527,7 +527,7 @@ def create_epsilon_file(meshSettings, boundaryConditions, nu=1.0e-5):
                 if (patch['bounds'] != None):
                     charLen = StlAnalysis.getMaxSTLDim(patch['bounds'])
                     l = 0.07*charLen  # turbulent length scale
-                    Umag = ampersandPrimitives.calc_Umag(patch['property'])
+                    Umag = AmpersandPrimitives.calc_Umag(patch['property'])
                     I = 0.01  # turbulence intensity in %
                     k = 1.5*(Umag*I)**2
                     epsilon = 0.09**(3./4.)*k**(3./2.)/l
@@ -557,10 +557,10 @@ def create_epsilon_file(meshSettings, boundaryConditions, nu=1.0e-5):
 
 
 def create_nut_file(meshSettings, boundaryConditions):
-    header = ampersandPrimitives.createFoamHeader(
+    header = AmpersandPrimitives.createFoamHeader(
         className="volScalarField", objectName="nut")
-    dims = ampersandPrimitives.createDimensions(M=0, L=2, T=-1)
-    internalField = ampersandPrimitives.createInternalFieldScalar(
+    dims = AmpersandPrimitives.createDimensions(M=0, L=2, T=-1)
+    internalField = AmpersandPrimitives.createInternalFieldScalar(
         type="uniform", value=0)
     nut_file = f""+header+dims+internalField+"\n"+"""\nboundaryField 
 {
@@ -679,17 +679,17 @@ def create_boundary_conditions(meshSettings, boundaryConditions, base_path="0"):
     # print(p_file)
     # print(u_file)
     print("Creating boundary conditions files")
-    ampersandPrimitives.write_to_file(f"{base_path}/U", u_file)
+    AmpersandPrimitives.write_to_file(f"{base_path}/U", u_file)
 
-    ampersandPrimitives.write_to_file(f"{base_path}/p", p_file)
+    AmpersandPrimitives.write_to_file(f"{base_path}/p", p_file)
 
-    ampersandPrimitives.write_to_file(f"{base_path}/k", k_file)
+    AmpersandPrimitives.write_to_file(f"{base_path}/k", k_file)
 
-    ampersandPrimitives.write_to_file(f"{base_path}/omega", omega_file)
+    AmpersandPrimitives.write_to_file(f"{base_path}/omega", omega_file)
 
-    ampersandPrimitives.write_to_file(f"{base_path}/epsilon", epsilon_file)
+    AmpersandPrimitives.write_to_file(f"{base_path}/epsilon", epsilon_file)
 
-    ampersandPrimitives.write_to_file(f"{base_path}/nut", nut_file)
+    AmpersandPrimitives.write_to_file(f"{base_path}/nut", nut_file)
 
 if __name__ == '__main__':
     create_boundary_conditions(meshSettings, boundaryConditions, "outputs")

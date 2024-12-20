@@ -18,11 +18,11 @@
 """
 
 # from constants import parallelSettings
-from src.primitives import ampersandPrimitives
+from src.primitives import AmpersandPrimitives
 
 
-def createDecomposeParDict(parallelSettings):
-    decomposeParDict = ampersandPrimitives.createFoamHeader(
+def createDecomposeParDict(parallelSettings: dict):
+    decomposeParDict = AmpersandPrimitives.createFoamHeader(
         className='dictionary', objectName='decomposeParDict')
     decomposeParDict += f"""
 numberOfSubdomains {parallelSettings['numberOfSubdomains']};

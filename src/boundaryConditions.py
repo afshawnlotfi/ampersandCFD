@@ -21,7 +21,7 @@
 # The boundary conditions are specified in the meshSettings.yaml file.
 # This is an early version of the script and will be updated in the future.
 # Brute force writing is used instead of a more elegant solution.
-from src.primitives import ampersandPrimitives
+from src.primitives import AmpersandPrimitives
 from src.constants import meshSettings, boundaryConditions, inletValues
 from src.utils.stl_analysis import StlAnalysis
 
@@ -132,11 +132,11 @@ def write_pressure_boundary_condition(patch="inlet1", purpose="inlet",
 
 
 def create_scalar_file(meshSettings, boundaryConditions, objName="k", dimensions=(0, 2, -2)):
-    header = ampersandPrimitives.createFoamHeader(
+    header = AmpersandPrimitives.createFoamHeader(
         className="volScalarField", objectName=objName)
-    dims = ampersandPrimitives.createDimensions(
+    dims = AmpersandPrimitives.createDimensions(
         M=dimensions[0], L=dimensions[1], T=dimensions[2])
-    internalField = ampersandPrimitives.createInternalFieldScalar(
+    internalField = AmpersandPrimitives.createInternalFieldScalar(
         type="uniform", value=0.0)
     s_file = f""+header+dims+internalField+"\n"+"""\nboundaryField 
 {"""
@@ -167,10 +167,10 @@ def create_scalar_file(meshSettings, boundaryConditions, objName="k", dimensions
 
 
 def create_u_file(meshSettings, boundaryConditions):
-    header = ampersandPrimitives.createFoamHeader(
+    header = AmpersandPrimitives.createFoamHeader(
         className="volVectorField", objectName="U")
-    dims = ampersandPrimitives.createDimensions(M=0, L=1, T=-1)
-    internalField = ampersandPrimitives.createInternalFieldVector(
+    dims = AmpersandPrimitives.createDimensions(M=0, L=1, T=-1)
+    internalField = AmpersandPrimitives.createInternalFieldVector(
         type="uniform", value=boundaryConditions['velocityInlet']['u_value'])
     U_file = f""+header+dims+internalField+"\n"+"""\nboundaryField 
 {"""
@@ -217,10 +217,10 @@ def create_omega_file(meshSettings, boundaryConditions):
 
 
 def create_nut_file(meshSettings, boundaryConditions):
-    header = ampersandPrimitives.createFoamHeader(
+    header = AmpersandPrimitives.createFoamHeader(
         className="volScalarField", objectName="nut")
-    dims = ampersandPrimitives.createDimensions(M=0, L=2, T=-1)
-    internalField = ampersandPrimitives.createInternalFieldScalar(
+    dims = AmpersandPrimitives.createDimensions(M=0, L=2, T=-1)
+    internalField = AmpersandPrimitives.createInternalFieldScalar(
         type="calculated", value=0.0)
     nut_file = f""+header+dims+internalField+"\n"+"""\nboundaryField 
 {"""
@@ -277,14 +277,14 @@ def create_boundary_conditions(meshSettings, boundaryConditions, nu=1.e-5):
     # print(p_file)
     # print(u_file)
     print("Creating boundary conditions files")
-    ampersandPrimitives.write_to_file("U", u_file)
+    AmpersandPrimitives.write_to_file("U", u_file)
 
-    ampersandPrimitives.write_to_file("p", p_file)
+    AmpersandPrimitives.write_to_file("p", p_file)
 
-    ampersandPrimitives.write_to_file("k", k_file)
+    AmpersandPrimitives.write_to_file("k", k_file)
 
-    ampersandPrimitives.write_to_file("omega", omega_file)
+    AmpersandPrimitives.write_to_file("omega", omega_file)
 
-    ampersandPrimitives.write_to_file("epsilon", epsilon_file)
+    AmpersandPrimitives.write_to_file("epsilon", epsilon_file)
 
-    ampersandPrimitives.write_to_file("nut", nut_file)
+    AmpersandPrimitives.write_to_file("nut", nut_file)

@@ -17,7 +17,7 @@
  */
 """
 
-from src.primitives import ampersandPrimitives, ampersandIO
+from src.primitives import AmpersandPrimitives, AmpersandIO
 from src.constants import meshSettings, postProcessSettings
 
 
@@ -155,7 +155,7 @@ streamLines
 
     @staticmethod
     def get_probe_location():
-        probeLocation = ampersandIO.get_input_vector(
+        probeLocation = AmpersandIO.get_input_vector(
             "Enter probe location (x y z): ")
         return probeLocation
 
