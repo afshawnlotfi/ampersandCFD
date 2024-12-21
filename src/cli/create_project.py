@@ -19,34 +19,15 @@
 """
 
 from pathlib import Path
-from typing import Optional, Union
-from pydantic import BaseModel, Field
 from src.cli.mod_project import ModProject
-from src.primitives import AmpersandDataInput, AmpersandPrimitives, AmpersandIO
+from src.models.inputs import FLUID_PYSICAL_PROPERTIES, FluidPhysicalProperties, ProjectInputModel, StlInputModel
+from src.primitives import AmpersandDataInput, AmpersandUtils, AmpersandIO
 from src.services.project_service import ProjectService
-
-class StlInputModel(BaseModel):
-    stl_path: Path
-    purpose: str
-
-class ProjectInputModel(BaseModel):
-    project_path: Union[str, Path]
-    refinement_level: int
-    is_internal_flow: bool
-    on_ground: Optional[bool] = None
-    fluid_properties: dict
-    inlet_values: tuple[float, float, float]
-    is_transient: bool
-    n_core: int
-    is_half_model: bool
-    use_function_objects: bool
-    stl_files: list[StlInputModel] = Field(default_factory=list)
-
 
 
 def create_project():
     
-    parent_directory = AmpersandPrimitives.ask_for_directory()
+    parent_directory = AmpersandUtils.ask_for_directory()
     project_name = AmpersandIO.get_input("Enter the project name: ")
     project_path = Path(f"{parent_directory}/{project_name}")
 
@@ -131,7 +112,7 @@ if __name__ == '__main__':
         project_path=Path("/workspaces/ampersandCFD/foamProjects/hello"),
         refinement_level=0,
         on_ground=True,
-        fluid_properties={'rho':1.225, 'nu':1.5e-5},
+        fluid_properties=FLUID_PYSICAL_PROPERTIES["Air"],
         inlet_values=(10,0,0),
         n_core=4,
         is_half_model=True,

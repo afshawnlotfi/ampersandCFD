@@ -18,17 +18,15 @@
 """
 
 from pathlib import Path
-from src.project import AmpersandProject
 from src.cli.mod_project import ModProject
-from src.primitives import AmpersandPrimitives, AmpersandIO
-import os
+from src.primitives import AmpersandDataInput, AmpersandUtils, AmpersandIO
 
 from src.services.project_service import ProjectService
 
 def open_project():
     AmpersandIO.printMessage("Please select the project directory to open")
     
-    parent_directory = AmpersandPrimitives.ask_for_directory()
+    parent_directory = AmpersandUtils.ask_for_directory()
     project_name = AmpersandIO.get_input("Enter the project name: ")
     project_path = Path(f"{parent_directory}/{project_name}")
 
@@ -37,14 +35,13 @@ def open_project():
 
     AmpersandIO.printMessage("Project loaded successfully")
     project.summarize_project()
-    # project.list_stl_files()
     modify_project = AmpersandIO.get_input_bool(
         "Do you want to modify the project settings (y/N)?: ")
     project_modified = False  # flag to check if the project has been modified
    
     while modify_project:
-        project.choose_modification_categorized()
-        ModProject.modify_project(project)
+        modification_type = AmpersandDataInput.choose_modification_categorized()
+        ModProject.modify_project(project, modification_type)
         project.write_settings()
         project_modified = True
         modify_project = AmpersandIO.get_input_bool("Do you want to modify another settings (y/N)?: ")

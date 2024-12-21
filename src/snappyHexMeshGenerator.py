@@ -1,4 +1,3 @@
-# %%
 """
 -------------------------------------------------------------------------------
   ***    *     *  ******   *******  ******    *****     ***    *     *  ******   
@@ -18,11 +17,12 @@
  */
 """
 
-from src.constants import meshSettings
-from src.primitives import AmpersandPrimitives
+from src.models.settings import SearchableBoxGeometry, TriSurfaceMeshGeometry, SnappyHexMeshSettings
+from src.primitives import AmpersandUtils
+from src.utils.generation import GenerationUtils
 
 
-def generate_snappyHexMeshDict(meshSettings: dict):
+def create_snappyHexMeshDict(meshSettings: SnappyHexMeshSettings):
     """
     Create a snappyHexMeshDict for OpenFOAM.
 
@@ -35,55 +35,57 @@ def generate_snappyHexMeshDict(meshSettings: dict):
     str: The content of the snappyHexMeshDict file as a string.
     """
     snappyHexMeshDict = f""
-    header = AmpersandPrimitives.createFoamHeader(
+    trueFalse = {True: "true", False: "false"}
+    header = GenerationUtils.createFoamHeader(
         className="dictionary", objectName="snappyHexMeshDict")
 
     steps = f"""
-castellatedMesh {meshSettings['snappyHexSteps']['castellatedMesh']};
-snap            {meshSettings['snappyHexSteps']['snap']};
-addLayers       {meshSettings['snappyHexSteps']['addLayers']};"""
+castellatedMesh {meshSettings.snappyHexSteps.castellatedMesh};
+snap            {meshSettings.snappyHexSteps.snap};
+addLayers       {meshSettings.snappyHexSteps.addLayers};"""
 
     features = ""
     refinementSurfaces = ""
-    maxRefinementLevel = 1
-    minRefinementRegionLevel = 2
-    geometry = f"""\ngeometry\n{{"""
-    for an_entry in meshSettings['geometry']:
+    added_geo = ""
+    # maxRefinementLevel = 1
+    # minRefinementRegionLevel = 2
+    geometry_str = f"""\ngeometry\n{{"""
+    for geometry_name, geometry in meshSettings.geometry.items():
         # For STL surfaces, featureEdges and refinementSurfaces are added
-        maxRefinementLevel = max(maxRefinementLevel, an_entry['refineMax'])
-        if (an_entry['type'] == 'triSurfaceMesh'):
+        # maxRefinementLevel = max(maxRefinementLevel, geometry_patch.refineMax)
+        if (isinstance(geometry, TriSurfaceMeshGeometry)):
             added_geo = f"""\n
-    {an_entry['name']}
+    {geometry_name}
     {{
-        type {an_entry['type']};
-        name {an_entry['name'][:-4]};
+        type {geometry.type};
+        name {geometry_name[:-4]};
         regions
         {{
-            {an_entry['name'][:-4]}
+            {geometry_name[:-4]}
             {{
-                name {an_entry['name'][:-4]};
+                name {geometry_name[:-4]};
             }}
         }}
     }}"""
             # Add features and refinement surfaces
-            if (an_entry['featureEdges']):
+            if (geometry.featureEdges):
                 features += f"""
 
         {{
-            file \"{an_entry['name'][:-4]}.eMesh\";
-            level {an_entry['featureLevel']};
+            file \"{geometry_name[:-4]}.eMesh\";
+            level {geometry.featureLevel};
         }}"""
-            if (an_entry['purpose'] == 'inlet' or an_entry['purpose'] == 'outlet'):
+            if (geometry.purpose == 'inlet' or geometry.purpose == 'outlet'):
                 patchType = 'patch'
                 refinementSurfaces += f"""
-        {an_entry['name'][:-4]}
+        {geometry_name[:-4]}
         {{
             level (0 0);
             regions
             {{
-                {an_entry['name'][:-4]}
+                {geometry_name[:-4]}
                 {{
-                    level ({an_entry['refineMin']} {an_entry['refineMax']});
+                    level ({geometry.refineMin} {geometry.refineMax});
                     patchInfo
                     {{
                         type {patchType};
@@ -91,46 +93,46 @@ addLayers       {meshSettings['snappyHexSteps']['addLayers']};"""
                 }}
             }}
         }}"""
-            elif (an_entry['purpose'] == 'cellZone'):
+            elif (geometry.purpose == 'cellZone'):
                 patchType = 'cellZone'
-                if an_entry['property'][1] == True:  # patches will be added
+                if geometry.property[1] == True:  # patches will be added
                     refinementSurfaces += f"""
-        {an_entry['name'][:-4]}
+        {geometry_name[:-4]}
         {{
             level (0 0);
-            cellZone {an_entry['name'][:-4]};
-            faceZone {an_entry['name'][:-4]};
+            cellZone {geometry_name[:-4]};
+            faceZone {geometry_name[:-4]};
             cellZoneInside inside;
             boundary internal;
             faceType boundary;
         }}"""
                 else:  # no patches. Just cellZone
                     refinementSurfaces += f"""
-        {an_entry['name'][:-4]}
+        {geometry_name[:-4]}
         {{
             level (0 0);
-            cellZone {an_entry['name'][:-4]};
-            faceZone {an_entry['name'][:-4]};
+            cellZone {geometry_name[:-4]};
+            faceZone {geometry_name[:-4]};
             cellZoneInside inside;
             boundary internal;
         }}"""
                 # if refinementSurface or region, do not add here
-            elif (an_entry['purpose'] == 'refinementRegion' or an_entry['purpose'] == 'refinementSurface'):
+            elif (geometry.purpose == 'refinementRegion' or geometry.purpose == 'refinementSurface'):
                 pass
 
-            elif (an_entry['purpose'] == 'baffle'):
+            elif (geometry.purpose == 'baffle'):
                 patchType = 'wall'
                 refinementSurfaces += f"""
-        {an_entry['name'][:-4]}
+        {geometry_name[:-4]}
         {{
             level (0 0);
             regions
             {{
-                {an_entry['name'][:-4]}
+                {geometry_name[:-4]}
                 {{
                     faceType baffles;
-                    faceZone {an_entry['name'][:-4]};
-                    level ({an_entry['refineMin']} {an_entry['refineMax']});
+                    faceZone {geometry_name[:-4]};
+                    level ({geometry.refineMin} {geometry.refineMax});
                 }}
             }}
         }}"""
@@ -138,14 +140,14 @@ addLayers       {meshSettings['snappyHexSteps']['addLayers']};"""
             else:
                 patchType = 'wall'
                 refinementSurfaces += f"""
-        {an_entry['name'][:-4]}
+        {geometry_name[:-4]}
         {{
             level (0 0);
             regions
             {{
-                {an_entry['name'][:-4]}
+                {geometry_name[:-4]}
                 {{
-                    level ({an_entry['refineMin']} {an_entry['refineMax']});
+                    level ({geometry.refineMin} {geometry.refineMax});
                     patchInfo
                     {{
                         type {patchType};
@@ -155,49 +157,49 @@ addLayers       {meshSettings['snappyHexSteps']['addLayers']};"""
         }}"""
 
         # For searchable boxes, min and max are added
-        elif (an_entry['type'] == 'searchableBox'):
+        elif (isinstance(geometry, SearchableBoxGeometry)):
             added_geo = f"""
-    {an_entry['name']}
+    {geometry_name}
     {{
-        type {an_entry['type']};
-        min ({an_entry['min'][0]} {an_entry['min'][1]} {an_entry['min'][2]});
-        max ({an_entry['max'][0]} {an_entry['max'][1]} {an_entry['max'][2]});
+        type {geometry.type};
+        min ({geometry.min[0]} {geometry.min[1]} {geometry.min[2]});
+        max ({geometry.max[0]} {geometry.max[1]} {geometry.max[2]});
     }}"""
-        geometry += added_geo
-    geometry += f"""
+        geometry_str += added_geo
+    geometry_str += f"""
 
 }}"""
 
     refinementRegions = f""
-    for an_entry in meshSettings['geometry']:
-        if (an_entry['type'] == 'searchableBox'):
+    for geometry_name, geometry in meshSettings.geometry.items():
+        if (isinstance(geometry, SearchableBoxGeometry)):
             refinementRegions += f"""
-        {an_entry['name']}
+        {geometry_name}
         {{
             mode inside;
-            levels ((1E15 {an_entry['refineMax']}));
+            levels ((1E15 {geometry.refineMax}));
         }}"""
-        elif (an_entry['type'] == 'triSurfaceMesh'):
-            if (an_entry['purpose'] == 'refinementSurface'):
+        elif (isinstance(geometry, TriSurfaceMeshGeometry)):
+            if (geometry.purpose == 'refinementSurface'):
                 refinementRegions += f"""
-        {an_entry['name'][:-4]}
+        {geometry_name[:-4]}
         {{
             mode distance;
-            levels ((1E-4 {an_entry['property']}));
+            levels ((1E-4 {geometry.property}));
         }}"""
-            elif (an_entry['purpose'] == 'refinementRegion'):
+            elif (geometry.purpose == 'refinementRegion'):
                 refinementRegions += f"""
-        {an_entry['name'][:-4]}
+        {geometry_name[:-4]}
         {{
             mode inside;
-            levels ((1E15 {an_entry['property']}));
+            levels ((1E15 {geometry.property}));
         }}"""
-            elif (an_entry['purpose'] == 'cellZone'):
+            elif (geometry.purpose == 'cellZone'):
                 refinementRegions += f"""
-        {an_entry['name'][:-4]}
+        {geometry_name[:-4]}
         {{
             mode inside;
-            levels ((1E15 {an_entry['property'][0]}));
+            levels ((1E15 {geometry.property[0]}));
         }}"""
 
         else:
@@ -205,11 +207,11 @@ addLayers       {meshSettings['snappyHexSteps']['addLayers']};"""
 
     castellatedMeshControls = f"""\ncastellatedMeshControls
 {{
-    maxLocalCells {meshSettings['castellatedMeshControls']['maxLocalCells']};
-    maxGlobalCells {meshSettings['castellatedMeshControls']['maxGlobalCells']};
-    minRefinementCells {meshSettings['castellatedMeshControls']['minRefinementCells']};
-    maxLoadUnbalance {meshSettings['castellatedMeshControls']['maxLoadUnbalance']};
-    nCellsBetweenLevels {meshSettings['castellatedMeshControls']['nCellsBetweenLevels']};
+    maxLocalCells {meshSettings.castellatedMeshControls.maxLocalCells};
+    maxGlobalCells {meshSettings.castellatedMeshControls.maxGlobalCells};
+    minRefinementCells {meshSettings.castellatedMeshControls.minRefinementCells};
+    maxLoadUnbalance {meshSettings.castellatedMeshControls.maxLoadUnbalance};
+    nCellsBetweenLevels {meshSettings.castellatedMeshControls.nCellsBetweenLevels};
     features
     (
         {features}
@@ -218,48 +220,48 @@ addLayers       {meshSettings['snappyHexSteps']['addLayers']};"""
     {{
         {refinementSurfaces}
     }}
-    resolveFeatureAngle {meshSettings['castellatedMeshControls']['resolveFeatureAngle']};
+    resolveFeatureAngle {meshSettings.castellatedMeshControls.resolveFeatureAngle};
     refinementRegions
     {{
         {refinementRegions}
     }};
-    locationInMesh ({meshSettings['castellatedMeshControls']['locationInMesh'][0]} {meshSettings['castellatedMeshControls']['locationInMesh'][1]} {meshSettings['castellatedMeshControls']['locationInMesh'][2]});
-    allowFreeStandingZoneFaces {meshSettings['castellatedMeshControls']['allowFreeStandingZoneFaces']};
+    locationInMesh ({meshSettings.castellatedMeshControls.locationInMesh[0]} {meshSettings.castellatedMeshControls.locationInMesh[1]} {meshSettings.castellatedMeshControls.locationInMesh[2]});
+    allowFreeStandingZoneFaces {meshSettings.castellatedMeshControls.allowFreeStandingZoneFaces};
 }}"""
 
     snapControls = f"""\nsnapControls
 {{
-    nSmoothPatch {meshSettings['snapControls']['nSmoothPatch']};
-    tolerance {meshSettings['snapControls']['tolerance']};
-    nSolveIter {meshSettings['snapControls']['nSolveIter']};
-    nRelaxIter {meshSettings['snapControls']['nRelaxIter']};
-    nFeatureSnapIter {meshSettings['snapControls']['nFeatureSnapIter']};
-    implicitFeatureSnap {meshSettings['snapControls']['implicitFeatureSnap']};
-    explicitFeatureSnap {meshSettings['snapControls']['explicitFeatureSnap']};
-    multiRegionFeatureSnap {meshSettings['snapControls']['multiRegionFeatureSnap']};
+    nSmoothPatch {meshSettings.snapControls.nSmoothPatch};
+    tolerance {meshSettings.snapControls.tolerance};
+    nSolveIter {meshSettings.snapControls.nSolveIter};
+    nRelaxIter {meshSettings.snapControls.nRelaxIter};
+    nFeatureSnapIter {meshSettings.snapControls.nFeatureSnapIter};
+    implicitFeatureSnap {meshSettings.snapControls.implicitFeatureSnap};
+    explicitFeatureSnap {meshSettings.snapControls.explicitFeatureSnap};
+    multiRegionFeatureSnap {meshSettings.snapControls.multiRegionFeatureSnap};
 }}"""
     layerControls = f"""\naddLayersControls
 {{
-    relativeSizes {meshSettings['addLayersControls']['relativeSizes']};
+    relativeSizes {meshSettings.addLayersControls.relativeSizes};
     layers
     {{"""
-    for an_entry in meshSettings['geometry']:
-        if (an_entry['type'] == 'triSurfaceMesh'):
-            if (an_entry['purpose'] == 'wall'):  # If the surface is a wall, add layers
+    for geometry_name, geometry in meshSettings.geometry.items():
+        if (isinstance(geometry, TriSurfaceMeshGeometry)):
+            if (geometry.purpose == 'wall'):  # If the surface is a wall, add layers
                 layerControls += f"""
-            "{an_entry['name'][:-4]}.*"
+            "{geometry_name[:-4]}.*"
             {{
-                nSurfaceLayers {an_entry['nLayers']};
+                nSurfaceLayers {geometry.nLayers};
             }}"""
-            elif (an_entry['purpose'] == 'baffle'):  # If the surface is a baffle, add layers
+            elif (geometry.purpose == 'baffle'):  # If the surface is a baffle, add layers
                 layerControls += f"""
-            "{an_entry['name'][:-4]}.*"
+            "{geometry_name[:-4]}.*"
             {{
                 nSurfaceLayers {1};
             }}"""
-            elif (an_entry['purpose'] == 'cellZone'):
+            elif (geometry.purpose == 'cellZone'):
                 layerControls += f"""
-            "{an_entry['name'][:-4]}.*"
+            "{geometry_name[:-4]}.*"
             {{
                 nSurfaceLayers {1};
             }}"""
@@ -267,40 +269,40 @@ addLayers       {meshSettings['snappyHexSteps']['addLayers']};"""
                 pass
     layerControls += f"""
     }};
-    expansionRatio {meshSettings['addLayersControls']['expansionRatio']};
-    finalLayerThickness {meshSettings['addLayersControls']['finalLayerThickness']};
-    //firstLayerThickness {meshSettings['addLayersControls']['firstLayerThickness']};
-    minThickness {meshSettings['addLayersControls']['minThickness']};
-    nGrow {meshSettings['addLayersControls']['nGrow']};
-    featureAngle {meshSettings['addLayersControls']['featureAngle']};
-    slipFeatureAngle {meshSettings['addLayersControls']['slipFeatureAngle']};
-    nRelaxIter {meshSettings['addLayersControls']['nRelaxIter']};
-    nSmoothSurfaceNormals {meshSettings['addLayersControls']['nSmoothSurfaceNormals']};
-    nSmoothNormals {meshSettings['addLayersControls']['nSmoothNormals']};
-    nSmoothThickness {meshSettings['addLayersControls']['nSmoothThickness']};
-    maxFaceThicknessRatio {meshSettings['addLayersControls']['maxFaceThicknessRatio']};
-    maxThicknessToMedialRatio {meshSettings['addLayersControls']['maxThicknessToMedialRatio']};
-    minMedianAxisAngle {meshSettings['addLayersControls']['minMedianAxisAngle']};
-    minMedialAxisAngle {meshSettings['addLayersControls']['minMedianAxisAngle']};
-    nBufferCellsNoExtrude {meshSettings['addLayersControls']['nBufferCellsNoExtrude']};
-    nLayerIter {meshSettings['addLayersControls']['nLayerIter']};
+    expansionRatio {meshSettings.addLayersControls.expansionRatio};
+    finalLayerThickness {meshSettings.addLayersControls.finalLayerThickness};
+    //firstLayerThickness {meshSettings.addLayersControls.firstLayerThickness};
+    minThickness {meshSettings.addLayersControls.minThickness};
+    nGrow {meshSettings.addLayersControls.nGrow};
+    featureAngle {meshSettings.addLayersControls.featureAngle};
+    slipFeatureAngle {meshSettings.addLayersControls.slipFeatureAngle};
+    nRelaxIter {meshSettings.addLayersControls.nRelaxIter};
+    nSmoothSurfaceNormals {meshSettings.addLayersControls.nSmoothSurfaceNormals};
+    nSmoothNormals {meshSettings.addLayersControls.nSmoothNormals};
+    nSmoothThickness {meshSettings.addLayersControls.nSmoothThickness};
+    maxFaceThicknessRatio {meshSettings.addLayersControls.maxFaceThicknessRatio};
+    maxThicknessToMedialRatio {meshSettings.addLayersControls.maxThicknessToMedialRatio};
+    minMedianAxisAngle {meshSettings.addLayersControls.minMedianAxisAngle};
+    minMedialAxisAngle {meshSettings.addLayersControls.minMedianAxisAngle};
+    nBufferCellsNoExtrude {meshSettings.addLayersControls.nBufferCellsNoExtrude};
+    nLayerIter {meshSettings.addLayersControls.nLayerIter};
 }}"""
     meshQualityControls = f"""\nmeshQualityControls
 {{
-    maxNonOrtho {meshSettings['meshQualityControls']['maxNonOrtho']};
-    maxBoundarySkewness {meshSettings['meshQualityControls']['maxBoundarySkewness']};
-    maxInternalSkewness {meshSettings['meshQualityControls']['maxInternalSkewness']};
-    maxConcave {meshSettings['meshQualityControls']['maxConcave']};
-    minVol {meshSettings['meshQualityControls']['minVol']};
-    minTetQuality {meshSettings['meshQualityControls']['minTetQuality']};
-    minArea {meshSettings['meshQualityControls']['minArea']};
-    minTwist {meshSettings['meshQualityControls']['minTwist']};
-    minDeterminant {meshSettings['meshQualityControls']['minDeterminant']};
-    minFaceWeight {meshSettings['meshQualityControls']['minFaceWeight']};
-    minVolRatio {meshSettings['meshQualityControls']['minVolRatio']};
-    minTriangleTwist {meshSettings['meshQualityControls']['minTriangleTwist']};
-    nSmoothScale {meshSettings['meshQualityControls']['nSmoothScale']};
-    errorReduction {meshSettings['meshQualityControls']['errorReduction']};
+    maxNonOrtho {meshSettings.meshQualityControls.maxNonOrtho};
+    maxBoundarySkewness {meshSettings.meshQualityControls.maxBoundarySkewness};
+    maxInternalSkewness {meshSettings.meshQualityControls.maxInternalSkewness};
+    maxConcave {meshSettings.meshQualityControls.maxConcave};
+    minVol {meshSettings.meshQualityControls.minVol};
+    minTetQuality {meshSettings.meshQualityControls.minTetQuality};
+    minArea {meshSettings.meshQualityControls.minArea};
+    minTwist {meshSettings.meshQualityControls.minTwist};
+    minDeterminant {meshSettings.meshQualityControls.minDeterminant};
+    minFaceWeight {meshSettings.meshQualityControls.minFaceWeight};
+    minVolRatio {meshSettings.meshQualityControls.minVolRatio};
+    minTriangleTwist {meshSettings.meshQualityControls.minTriangleTwist};
+    nSmoothScale {meshSettings.meshQualityControls.nSmoothScale};
+    errorReduction {meshSettings.meshQualityControls.errorReduction};
 }}"""
     debug = f"""
 writeFlags
@@ -309,24 +311,23 @@ writeFlags
     layerSets
     layerFields     // write volScalarField for layer coverage
 );
-debug {meshSettings['debug']};
-mergeTolerance {meshSettings['mergeTolerance']};"""
-    snappyHexMeshDict += header+steps+geometry+castellatedMeshControls + \
+debug {meshSettings.debug};
+mergeTolerance {meshSettings.mergeTolerance};"""
+    snappyHexMeshDict += header+steps+geometry_str+castellatedMeshControls + \
         snapControls+layerControls+meshQualityControls+debug
-    # print(snappyHexMeshDict)
     return snappyHexMeshDict
-
-
-def write_snappyHexMeshDict(snappyHexMeshDict: dict):
-    with open('snappyHexMeshDict', 'w') as file:
-        file.write(snappyHexMeshDict)
 
 
 # Example usage
 if __name__ == "__main__":
-    snappy_hex_mesh_dict_content = generate_snappyHexMeshDict(meshSettings)
+    meshSettings = SnappyHexMeshSettings.model_validate(
+        AmpersandUtils.yaml_to_dict("examples/basic/meshSettings.yaml")
+    )
+
+    snappy_hex_mesh_dict_content = create_snappyHexMeshDict(meshSettings)
     with open("outputs/snappyHexMeshDict", "w") as f:
         f.write(snappy_hex_mesh_dict_content)
     print("snappyHexMeshDict file created.")
 
-# %%
+
+

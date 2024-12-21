@@ -17,32 +17,29 @@
  */
 """
 
-from src.constants import meshSettings, physicalProperties, numericalSettings, inletValues, boundaryConditions
-from src.primitives import AmpersandPrimitives
-from src.constants import simulationSettings
+from src.models.settings import ControlSettings
+from src.utils.generation import GenerationUtils
 
 
-def createControlDict(simulationSettings):
-    controlDict = AmpersandPrimitives.createFoamHeader(
-        className='dictionary', objectName='controlDict')
-    controlDict += f"""
-application     {simulationSettings['application']};
-startFrom       {simulationSettings['startFrom']};
-startTime       {simulationSettings['startTime']};
-stopAt          {simulationSettings['stopAt']};
-endTime         {simulationSettings['endTime']};
-deltaT          {simulationSettings['deltaT']};
-writeControl    {simulationSettings['writeControl']};
-writeInterval   {simulationSettings['writeInterval']};
-purgeWrite      {simulationSettings['purgeWrite']};
-writeFormat     {simulationSettings['writeFormat']};
-writePrecision  {simulationSettings['writePrecision']};
-writeCompression {simulationSettings['writeCompression']};
-timeFormat      {simulationSettings['timeFormat']};
-timePrecision   {simulationSettings['timePrecision']};
-runTimeModifiable {simulationSettings['runTimeModifiable']};
-adjustTimeStep  {simulationSettings['adjustTimeStep']};
-maxCo           {simulationSettings['maxCo']};
+def createControlDict(control_settings: ControlSettings):
+    return f"""{GenerationUtils.createFoamHeader('dictionary', 'controlDict')}
+application     {control_settings.application};
+startFrom       {control_settings.startFrom};
+startTime       {control_settings.startTime};
+stopAt          {control_settings.stopAt};
+endTime         {control_settings.endTime};
+deltaT          {control_settings.deltaT};
+writeControl    {control_settings.writeControl};
+writeInterval   {control_settings.writeInterval};
+purgeWrite      {control_settings.purgeWrite};
+writeFormat     {control_settings.writeFormat};
+writePrecision  {control_settings.writePrecision};
+writeCompression {control_settings.writeCompression};
+timeFormat      {control_settings.timeFormat};
+timePrecision   {control_settings.timePrecision};
+runTimeModifiable {control_settings.runTimeModifiable};
+adjustTimeStep  {control_settings.adjustTimeStep};
+maxCo           {control_settings.maxCo};
 functions
 {{
     #include "FOs"
@@ -51,10 +48,10 @@ libs
 (
 );
 """
-    return controlDict
 
 
 # Generate controlDict
 if __name__ == '__main__':
-    controlDict = createControlDict(simulationSettings)
+    control_settings = ControlSettings()
+    controlDict = createControlDict(control_settings)
     print(controlDict)

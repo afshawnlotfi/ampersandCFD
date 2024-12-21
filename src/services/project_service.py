@@ -1,7 +1,8 @@
 from pathlib import Path
 import shutil
 from typing import Union
-from src.primitives import AmpersandIO
+from src.models.settings import SimulationSettings
+from src.primitives import AmpersandIO, AmpersandUtils
 from src.project import AmpersandProject
 
 
@@ -45,26 +46,19 @@ class ProjectService:
         except OSError as e:
             raise OSError(f"Failed to create OpenFOAM directory structure: {e}")
         
-        project.load_default_settings()
         project.write_settings()
 
         return project
 
     @staticmethod
     def load_project(project_path: Union[str, Path]):
-        project_path = Path(project_path)
-        project = AmpersandProject(project_path)
+        AmpersandIO.printMessage(f"Loading project from path: {project_path}")
+        settings = SimulationSettings.model_validate(AmpersandUtils.yaml_to_dict(f"{project_path}/project_settings.yaml"))
+        project = AmpersandProject(project_path, settings)
 
-        AmpersandIO.printMessage(f"Project path: {project_path}")
-        if not project_path.exists():
-            raise FileNotFoundError("No project found. Exiting the program")
-        AmpersandIO.printMessage("Loading the project")
-
-        project.load_settings()
         ProjectService.validate_project(project)
 
         AmpersandIO.printMessage("Project loaded successfully")
-
         return project
 
 

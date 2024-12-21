@@ -17,32 +17,31 @@
  */
 """
 
-import yaml
-from src.primitives import AmpersandPrimitives
-from src.constants import meshSettings, physicalProperties
+from src.models.settings import PhysicalProperties
+from src.utils.generation import GenerationUtils
 
 
-def create_transportPropertiesDict(transportProperties):
-    header = AmpersandPrimitives.createFoamHeader(
-        className="dictionary", objectName="transportProperties")
+def create_transportPropertiesDict(transportProperties: PhysicalProperties):
+    header = GenerationUtils.createFoamHeader(className="dictionary",
+                                              objectName="transportProperties")
     transportPropertiesDict = f""+header
     transportProperties_ = f"""
 transportModel  Newtonian;
-nu              nu [ 0 2 -1 0 0 0 0 ] {transportProperties['nu']};
+nu              nu [ 0 2 -1 0 0 0 0 ] {transportProperties.nu};
 """
     transportPropertiesDict += transportProperties_
     return transportPropertiesDict
 
 
-def create_turbulencePropertiesDict(turbulenceProperties):
-    header = AmpersandPrimitives.createFoamHeader(
-        className="dictionary", objectName="turbulenceProperties")
+def create_turbulencePropertiesDict(turbulenceProperties: PhysicalProperties):
+    header = GenerationUtils.createFoamHeader(className="dictionary",
+                                              objectName="turbulenceProperties")
     turbulencePropertiesDict = f""+header
     turbulenceProperties_ = f"""
 simulationType  RAS;
 RAS
 {{
-    RASModel        {turbulenceProperties['turbulenceModel']};
+    RASModel        {turbulenceProperties.turbulenceModel};
     turbulence      on;
     printCoeffs     on;
     Cmu             0.09;
@@ -53,13 +52,12 @@ RAS
 
 
 if __name__ == "__main__":
-    transportPropertiesDict = create_transportPropertiesDict(
-        physicalProperties)
-    with open('transportProperties', 'w') as file:
+    physicalProperties = PhysicalProperties()
+    transportPropertiesDict = create_transportPropertiesDict(physicalProperties)
+    with open('outputs/transportProperties', 'w') as file:
         file.write(transportPropertiesDict)
-    turbulencePropertiesDict = create_turbulencePropertiesDict(
-        physicalProperties)
-    with open('turbulenceProperties', 'w') as file:
+    turbulencePropertiesDict = create_turbulencePropertiesDict(physicalProperties)
+    with open('outputs/turbulenceProperties', 'w') as file:
         file.write(turbulencePropertiesDict)
     print(transportPropertiesDict)
     print(turbulencePropertiesDict)

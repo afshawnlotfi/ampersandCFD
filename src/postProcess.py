@@ -17,16 +17,14 @@
  */
 """
 
-from src.primitives import AmpersandPrimitives, AmpersandIO
-from src.constants import meshSettings, postProcessSettings
+from typing import Literal, Union
+from src.primitives import AmpersandIO
+from src.models.settings import MeshSettings, PostProcessSettings
 
 
-class postProcess:
-    def __init__(self):
-        pass
-
+class PostProcess:
     @staticmethod
-    def generate_post_process_script():
+    def create_post_process_script():
         cmdPostProcess = f"""#!/bin/sh
 cd "${{0%/*}}" || exit                                # Run from this directory
 . ${{WM_PROJECT_DIR:?}}/bin/tools/RunFunctions        # Tutorial run functions
@@ -138,8 +136,9 @@ forces
 """
         return FO
 
+    # TODO: this is problematic if it is start or end
     @staticmethod
-    def FO_streamLines(start="start", end="end", nPoints=100):
+    def FO_streamLines(start: Union[tuple, Literal["start"]] = "start", end: Union[tuple, Literal["end"]] = "end", nPoints=100):
         FO = f"""
 streamLines
 {{
@@ -160,38 +159,39 @@ streamLines
         return probeLocation
 
     @staticmethod
-    def get_mass_flow_rate_FO(meshSettings):
+    def get_mass_flow_rate_FO(meshSettings: MeshSettings):
         massFlowFO = ""
         # for internal flow problems, get all patches
-        if (meshSettings['internalFlow']):
-            for patch in meshSettings['geometry']:
-                if (patch['purpose'] == "inlet" or patch['purpose'] == "outlet"):
-                    massFlowFO += postProcess.FO_massFlow(
-                        patchName=patch['name'][:-4])
+        if (meshSettings.internalFlow):
+            for patch_name, patch in meshSettings.geometry.items():
+                if (patch.purpose == "inlet" or patch.purpose == "outlet"):
+                    # TODO: why is this -4, for removing "name"?
+                    massFlowFO += PostProcess.FO_massFlow(
+                        patchName=patch_name[:-4])
                     # massFlowFO += postProcess.FO_massFlow(patchName=patch)
         else:
             # for external flow problems, there are only inlet and outlet patches
-            massFlowFO += postProcess.FO_massFlow(patchName="inlet")
-            massFlowFO += postProcess.FO_massFlow(patchName="outlet")
+            massFlowFO += PostProcess.FO_massFlow(patchName="inlet")
+            massFlowFO += PostProcess.FO_massFlow(patchName="outlet")
         return massFlowFO
 
     @staticmethod
-    def create_FOs(meshSettings, postProcessSettings, useFOs=True):
+    def create_FOs(meshSettings: MeshSettings, postProcessSettings: PostProcessSettings, useFOs=True):
         if (not useFOs):
             return "// No function objects are used"
         FOs = ""
-        if (postProcessSettings['minMax']):
-            FOs += postProcess.FO_min_max()
-        if (postProcessSettings['yPlus']):
-            FOs += postProcess.FO_yPlus()
-        if (postProcessSettings['forces']):
-            FOs += postProcess.FO_forces(patchName="wall",
+        if (postProcessSettings.minMax):
+            FOs += PostProcess.FO_min_max()
+        if (postProcessSettings.yPlus):
+            FOs += PostProcess.FO_yPlus()
+        if (postProcessSettings.forces):
+            FOs += PostProcess.FO_forces(patchName="wall",
                                          rhoInf=1, CofR=(0, 0, 0), pitchAxis=(0, 1, 0))
-        if (postProcessSettings['massFlow']):
-            FOs += postProcess.get_mass_flow_rate_FO(meshSettings)
-        if (len(postProcessSettings['probeLocations']) > 0):
-            FOs += postProcess.FO_probes(probeName="probe",
-                                         probeLocations=postProcessSettings['probeLocations'])
-        # if(postProcessSettings['streamLines']):
+        if (postProcessSettings.massFlow):
+            FOs += PostProcess.get_mass_flow_rate_FO(meshSettings)
+        if (len(postProcessSettings.probeLocations) > 0):
+            FOs += PostProcess.FO_probes(probeName="probe",
+                                         probeLocations=postProcessSettings.probeLocations)
+        # if(postProcessSettings.streamLines):
         #    FOs += postProcess.FO_streamLines(start=(0,0,0),end=(0,0,1),nPoints=100)
         return FOs

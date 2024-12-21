@@ -22,7 +22,10 @@ import yaml
 import sys
 from tkinter import filedialog, Tk
 
-from src.headers import AMPERSAND_HEADER
+from src.models.inputs import FLUID_PYSICAL_PROPERTIES, FluidPhysicalProperties
+from src.models.settings import BoundingBox
+from src.utils.generation import AMPERSAND_HEADER
+
 try:
     from PySide6.QtWidgets import QMessageBox
     from src.gui.dialogBoxes import inputDialogDriver, vectorInputDialogDriver
@@ -30,7 +33,7 @@ except:
     pass
 
 
-class AmpersandPrimitives:
+class AmpersandUtils:
 
     @staticmethod
     def list_stl_files(stl_files):
@@ -118,17 +121,6 @@ class AmpersandPrimitives:
         return boundaries  # return the number of boundarys
         # ampersandIO.printMessage(f"{patch['name']}: {patch['purpose']}\t{patch['property']}")
 
-    @staticmethod
-    def change_patch_type(patches, patch_name, new_type='patch'):
-        patch_found = False
-        for patch in patches:
-            if patch['name'] == patch_name:
-                patch_found = True
-                patch['type'] = new_type
-                break
-        if not patch_found:
-            return -1
-        return 0
 
     @staticmethod
     # Function to recursively convert tuples to lists (or any other conversion)
@@ -136,9 +128,9 @@ class AmpersandPrimitives:
         if isinstance(data, tuple):
             return list(data)
         elif isinstance(data, dict):
-            return {k: AmpersandPrimitives.sanitize_yaml(v) for k, v in data.items()}
+            return {k: AmpersandUtils.sanitize_yaml(v) for k, v in data.items()}
         elif isinstance(data, list):
-            return [AmpersandPrimitives.sanitize_yaml(item) for item in data]
+            return [AmpersandUtils.sanitize_yaml(item) for item in data]
         else:
             return data
 
@@ -159,7 +151,7 @@ class AmpersandPrimitives:
     @staticmethod
     def treat_bounds(geometry):
         for anObject in geometry:
-            AmpersandPrimitives.list_to_tuple_dict(anObject)
+            AmpersandUtils.list_to_tuple_dict(anObject)
             # print(anObject)
         return geometry
 
@@ -168,7 +160,7 @@ class AmpersandPrimitives:
     def list_to_tuple_dict(data):
         for key, value in data.items():
             if isinstance(value, dict):
-                AmpersandPrimitives.list_to_tuple_dict(value)
+                AmpersandUtils.list_to_tuple_dict(value)
             elif isinstance(value, list):
                 data[key] = tuple(value)
         return data
@@ -210,7 +202,7 @@ class AmpersandPrimitives:
         and converts tuples to lists."""
         for key, value in dict_.items():
             if isinstance(value, dict):
-                AmpersandPrimitives.check_dict(value)
+                AmpersandUtils.check_dict(value)
             elif isinstance(value, tuple):
                 dict_[key] = list(value)
         return dict_
@@ -224,7 +216,7 @@ class AmpersandPrimitives:
         - data (dict): The dictionary to be converted.
         - output_file (str): The name of the output YAML file.
         """
-        data = AmpersandPrimitives.sanitize_yaml(data)
+        data = AmpersandUtils.sanitize_yaml(data)
         with open(output_file, 'w') as file:
             yaml.dump(data, file, default_flow_style=False, sort_keys=False)
         # print(f"YAML file '{output_file}' has been created.")
@@ -274,7 +266,7 @@ FoamFile
         return f"\ndimensions      [{M} {L} {T} 0 0 0 0];"
 
     @staticmethod
-    def createInternalFieldScalar(type="uniform", value=0):
+    def createInternalFieldScalar(type="uniform", value:float=0):
         return f"""\ninternalField   {type} {value};"""
 
     @staticmethod
@@ -505,6 +497,25 @@ class AmpersandDataInput:
         return U
 
     @staticmethod
+    def choose_modification_categorized():
+        options = ['Mesh', 'Boundary Conditions', 'Fluid Properties', 'Numerical Settings',
+                   'Simulation Control Settings', 'Turbulence Model', 'Post Processing Settings']
+        current_modification = AmpersandIO.get_option_choice(prompt="Choose any option for project modification: ",
+                                                             options=options, title="\nModify Project Settings")
+        mesh_options = ['Background Mesh', 'Mesh Point',
+                        'Add Geometry', 'Refinement Levels']
+
+        if current_modification < 0 or current_modification > len(options)-1:
+            raise ValueError("Invalid option. Aborting operation")
+            
+        if current_modification == 0:
+            return mesh_options[AmpersandIO.get_option_choice(prompt="Choose any option for mesh modification: ",
+                                                                                   options=mesh_options, title="\nModify Mesh Settings")]
+        else:
+            return options[current_modification]
+
+
+    @staticmethod
     def get_domain_size():
         AmpersandIO.printMessage(
             "Domain size is the size of the computational domain in meters")
@@ -514,8 +525,8 @@ class AmpersandDataInput:
         if (minX >= maxX or minY >= maxY or minZ >= maxZ):
             AmpersandIO.printMessage(
                 "Invalid domain size, please enter the values again")
-            AmpersandDataInput.get_domain_size()
-        return minX, maxX, minY, maxY, minZ, maxZ
+            return AmpersandDataInput.get_domain_size()
+        return BoundingBox(minx=minX, maxx=maxX, miny=minY, maxy=maxY, minz=minZ, maxz=maxZ)
 
     @staticmethod
     def get_cell_size():
@@ -562,7 +573,8 @@ class AmpersandDataInput:
             "Enter the density of the fluid (kg/m^3): ")
         nu = AmpersandIO.get_input_float(
             "Enter the kinematic viscosity of the fluid (m^2/s): ")
-        return {"rho": rho, "nu": nu}
+        return FluidPhysicalProperties(rho=rho, nu=nu)
+
 
     @staticmethod
     def get_turbulence_model():
@@ -580,20 +592,17 @@ class AmpersandDataInput:
 
     @staticmethod
     def choose_fluid_properties():
-        fluids = {"Air": {'rho': 1.225, 'nu': 1.5e-5},
-                  "Water": {'rho': 1000, 'nu': 1e-6}, }
-        fluid_names = list(fluids.keys())
+        fluid_names = list(FLUID_PYSICAL_PROPERTIES.keys())
         AmpersandIO.printMessage("Fluid properties")
         AmpersandIO.printMessage("0. Enter fluid properties manually")
         for i in range(len(fluid_names)):
             AmpersandIO.printMessage(f"{i+1}. {fluid_names[i]}")
         fluid_name = AmpersandIO.get_input_int("Choose the fluid properties:")
 
-        if (fluid_name > len(fluids) or fluid_name <= 0):
+        if (fluid_name > len(FLUID_PYSICAL_PROPERTIES) or fluid_name <= 0):
             AmpersandIO.printMessage("Please input fluid properties manually.")
-            rho, nu = AmpersandDataInput.get_physical_properties()
-            return {'rho': rho, 'nu': nu}
-        fluid = fluids[fluid_names[fluid_name-1]]
+            return AmpersandDataInput.get_physical_properties()
+        fluid = FLUID_PYSICAL_PROPERTIES[fluid_names[fluid_name-1]]
         return fluid
 
     @staticmethod
@@ -608,10 +617,10 @@ class AmpersandDataInput:
 
 
 if __name__ == "__main__":
-    print(AmpersandPrimitives.createFoamHeader(
+    print(AmpersandUtils.createFoamHeader(
         className="dictionary", objectName="snappyHexMeshDict"))
-    print(AmpersandPrimitives.createDimensions(M=1, L=1, T=1))
-    print(AmpersandPrimitives.createScalarFixedValue(patch_name="inlet", value=0))
-    print(AmpersandPrimitives.createScalarZeroGradient(patch_name="inlet"))
-    print(AmpersandPrimitives.createVectorFixedValue(
+    print(AmpersandUtils.createDimensions(M=1, L=1, T=1))
+    print(AmpersandUtils.createScalarFixedValue(patch_name="inlet", value=0))
+    print(AmpersandUtils.createScalarZeroGradient(patch_name="inlet"))
+    print(AmpersandUtils.createVectorFixedValue(
         patch_name="inlet", value=[0, 0, 0]))

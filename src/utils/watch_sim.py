@@ -21,7 +21,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import time
 from src.project import AmpersandProject
-from src.primitives import AmpersandPrimitives, AmpersandIO
+from src.primitives import AmpersandUtils, AmpersandIO
 import os
 
 from src.services.project_service import ProjectService
@@ -190,7 +190,7 @@ def watch_residuals_live(logfile, interval=500):
 def watch_sim():
     AmpersandIO.printMessage("Please select the project directory to open")
 
-    parent_directory = AmpersandPrimitives.ask_for_directory()
+    parent_directory = AmpersandUtils.ask_for_directory()
     project_name = AmpersandIO.get_input("Enter the project name: ")
     project_path = Path(f"{parent_directory}/{project_name}")
 

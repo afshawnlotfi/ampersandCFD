@@ -30,7 +30,7 @@ from time import sleep
 
 # Connection to the Ampersand Backend
 from project import AmpersandProject
-from src.primitives import AmpersandDataInput, AmpersandPrimitives, AmpersandIO
+from src.primitives import AmpersandDataInput, AmpersandUtils, AmpersandIO
 from src.services.project_service import ProjectService
 
 
@@ -343,7 +343,7 @@ class mainWindow(QMainWindow):
         self.window.listWidgetObjList.clear()
         for i in range(len(self.project.stl_files)):
             self.window.listWidgetObjList.insertItem(
-                i, self.project.stl_files[i]['name'])
+                i, self.project.stl_files[i].name)
 
     def updatePropertyBox(self):
         # find the selected item in the list
@@ -410,7 +410,7 @@ class mainWindow(QMainWindow):
     def chooseInternalFlow(self):
         # print("Choose Internal Flow")
         self.project.internalFlow = True
-        self.project.meshSettings['internalFlow'] = True
+        self.project.settings.mesh.internalFlow = True
         self.window.checkBoxOnGround.setEnabled(False)
         self.updateStatusBar("Choosing Internal Flow")
         sleep(0.001)
@@ -418,9 +418,9 @@ class mainWindow(QMainWindow):
 
     def chooseExternalFlow(self):
         self.project.internalFlow = False
-        self.project.meshSettings['internalFlow'] = False
+        self.project.settings.mesh.internalFlow = False
         self.window.checkBoxOnGround.setEnabled(True)
-        self.project.meshSettings['onGround'] = self.window.checkBoxOnGround.isChecked(
+        self.project.settings.mesh.onGround = self.window.checkBoxOnGround.isChecked(
         )
         self.project.on_ground = self.window.checkBoxOnGround.isChecked()
         self.updateStatusBar("Choosing External Flow")
@@ -456,7 +456,7 @@ class mainWindow(QMainWindow):
         AmpersandIO.window = self.window
         AmpersandIO.GUIMode = True
 
-        parent_directory = AmpersandPrimitives.ask_for_directory(qt=True)
+        parent_directory = AmpersandUtils.ask_for_directory(qt=True)
         project_name = AmpersandIO.get_input("Enter the project name: ")
         project_path = f"{parent_directory}/{project_name}"
 
@@ -505,29 +505,27 @@ class mainWindow(QMainWindow):
         # clear the list widget
         self.window.listWidgetObjList.clear()
         
-        project_path = AmpersandPrimitives.ask_for_directory(qt=True)
+        project_path = AmpersandUtils.ask_for_directory(qt=True)
 
         AmpersandIO.printMessage(f"Project path: {project_path}")
         AmpersandIO.printMessage("Loading the project")
 
-        self.project.load_settings()
-        ProjectService.validate_project(self.project)
-        AmpersandIO.printMessage("Project loaded successfully")
+        self.project = ProjectService.load_project(project_path)
 
         self.project.summarize_project()
         self.enableButtons()
         self.autoDomain()
         self.update_list()
-        stl_file_paths = self.project.list_stl_paths(project_path)
+        stl_file_paths = self.project.list_stl_paths(self.project.project_path)
         for stl_file in stl_file_paths:
             self.showSTL(stlFile=stl_file)
         self.readyStatusBar()
         self.project_opened = True
         AmpersandIO.printMessage(
-            f"Project {self.project.project_name} created")
+            f"Project {self.project.name} created")
 
         # change window title
-        self.setWindowTitle(f"Case Creator: {self.project.project_name}")
+        self.setWindowTitle(f"Case Creator: {self.project.name}")
         self.readyStatusBar()
 
     def generateCase(self):
@@ -544,18 +542,18 @@ class mainWindow(QMainWindow):
         # self.project.adjust_domain_size()
         # if self.project.internalFlow==False:
         onGround = self.window.checkBoxOnGround.isChecked()
-        self.project.meshSettings['onGround'] = onGround
+        self.project.settings.mesh.onGround = onGround
         self.project.on_ground = onGround
         print("On Ground: ", onGround)
-        minx = self.project.meshSettings['domain']['minx']
-        miny = self.project.meshSettings['domain']['miny']
-        minz = self.project.meshSettings['domain']['minz']
-        maxx = self.project.meshSettings['domain']['maxx']
-        maxy = self.project.meshSettings['domain']['maxy']
-        maxz = self.project.meshSettings['domain']['maxz']
-        nx = self.project.meshSettings['domain']['nx']
-        ny = self.project.meshSettings['domain']['ny']
-        nz = self.project.meshSettings['domain']['nz']
+        minx = self.project.settings.mesh.domain.minx
+        miny = self.project.settings.mesh.domain.miny
+        minz = self.project.settings.mesh.domain.minz
+        maxx = self.project.settings.mesh.domain.maxx
+        maxy = self.project.settings.mesh.domain.maxy
+        maxz = self.project.settings.mesh.domain.maxz
+        nx = self.project.settings.mesh.domain.nx
+        ny = self.project.settings.mesh.domain.ny
+        nz = self.project.settings.mesh.domain.nz
         self.window.lineEditMinX.setText(f"{minx:.2f}")
         self.window.lineEditMinY.setText(f"{miny:.2f}")
         self.window.lineEditMinZ.setText(f"{minz:.2f}")
@@ -586,15 +584,15 @@ class mainWindow(QMainWindow):
             AmpersandIO.printError("Invalid Domain Size")
             self.readyStatusBar()
             return
-        self.project.meshSettings['domain']['minx'] = minx
-        self.project.meshSettings['domain']['miny'] = miny
-        self.project.meshSettings['domain']['minz'] = minz
-        self.project.meshSettings['domain']['maxx'] = maxx
-        self.project.meshSettings['domain']['maxy'] = maxy
-        self.project.meshSettings['domain']['maxz'] = maxz
-        self.project.meshSettings['domain']['nx'] = nx
-        self.project.meshSettings['domain']['ny'] = ny
-        self.project.meshSettings['domain']['nz'] = nz
+        self.project.settings.mesh.domain.minx = minx
+        self.project.settings.mesh.domain.miny = miny
+        self.project.settings.mesh.domain.minz = minz
+        self.project.settings.mesh.domain.maxx = maxx
+        self.project.settings.mesh.domain.maxy = maxy
+        self.project.settings.mesh.domain.maxz = maxz
+        self.project.settings.mesh.domain.nx = nx
+        self.project.settings.mesh.domain.ny = ny
+        self.project.settings.mesh.domain.nz = nz
         self.updateStatusBar("Manual Domain Set")
         self.add_box_to_VTK(minX=minx, minY=miny, minZ=minz,
                             maxX=maxx, maxY=maxy, maxZ=maxz, boxName="Domain")

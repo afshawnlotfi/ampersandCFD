@@ -23,6 +23,7 @@ from typing import Union
 import vtk
 import numpy as np
 import math
+from src.models.settings import Domain, MeshSettings, SearchableBoxGeometry, TriSurfaceMeshGeometry
 from src.thirdparty.stlToOpenFOAM import find_inside_point, is_point_inside, read_stl_file
 from src.thirdparty.stlToOpenFOAM import extract_curvature_data, compute_curvature
 from src.primitives import AmpersandIO
@@ -36,7 +37,7 @@ class StlAnalysis:
     # to calculate the domain size for blockMeshDict
 
     @staticmethod
-    def calc_domain_size(stlBoundingBox, sizeFactor=1, onGround=False,
+    def calc_domain_size(stlBoundingBox, sizeFactor: float=1, onGround=False,
                          internalFlow=False, halfModel=False):
         stlMinX, stlMaxX, stlMinY, stlMaxY, stlMinZ, stlMaxZ = stlBoundingBox
         # this part is for external flow
@@ -116,43 +117,55 @@ class StlAnalysis:
 
     # to add refinement box to mesh settings
     @staticmethod
-    def addRefinementBoxToMesh(meshSettings, stl_path, boxName='refinementBox', refLevel=2, internalFlow=False):
+    def addRefinementBoxToMesh(meshSettings: MeshSettings, stl_path, boxName='refinementBox', refLevel=2, internalFlow=False):
         if (internalFlow):
             return meshSettings
         stlBoundingBox = StlAnalysis.compute_bounding_box(stl_path)
         box = StlAnalysis.getRefinementBox(stlBoundingBox)
-        meshSettings['geometry'].append({'name': boxName, 'type': 'searchableBox', 'purpose': 'refinement',
-                                         'min': [box[0], box[2], box[4]], 'max': [box[1], box[3], box[5]],
-                                         'refineMax': refLevel-1})
-
+        meshSettings.geometry[boxName]= SearchableBoxGeometry(
+            type='searchableBox',
+            purpose="refinementRegion",
+            min=[box[0], box[2], box[4]],
+            max=[box[1], box[3], box[5]], 
+            refineMax=refLevel-1
+        )
+        
         fineBox = StlAnalysis.getRefinementBoxClose(stlBoundingBox)
-        meshSettings['geometry'].append({'name': 'fineBox', 'type': 'searchableBox', 'purpose': 'refinement',
-                                         'min': [fineBox[0], fineBox[2], fineBox[4]], 'max': [fineBox[1], fineBox[3], fineBox[5]],
-                                         'refineMax': refLevel})
+        meshSettings.geometry["fineBox"] = SearchableBoxGeometry(
+            type='searchableBox',
+            purpose='refinementRegion',
+            min=[fineBox[0], fineBox[2], fineBox[4]],
+            max=[fineBox[1], fineBox[3], fineBox[5]], 
+            refineMax=refLevel
+        )
 
         return meshSettings
 
     # refinement box for the ground for external automotive flows
     @staticmethod
-    def addGroundRefinementBoxToMesh(meshSettings, stl_path, refLevel=2):
+    def addGroundRefinementBoxToMesh(meshSettings: MeshSettings, stl_path, refLevel=2):
         # if(internalFlow):
         #    return meshSettings
         boxName = 'groundBox'
         stlBoundingBox = StlAnalysis.compute_bounding_box(stl_path)
         xmin, xmax, ymin, ymax, zmin, zmax = stlBoundingBox
-        z = meshSettings['domain']['minz']
+        z = meshSettings.domain.minz
         z_delta = 0.2*(zmax-zmin)
         box = [-1000.0, 1000., -1000, 1000, z-z_delta, z+z_delta]
-        meshSettings['geometry'].append({'name': boxName, 'type': 'searchableBox', 'purpose': 'refinement',
-                                         'min': [box[0], box[2], box[4]], 'max': [box[1], box[3], box[5]],
-                                         'refineMax': refLevel})
+        meshSettings.geometry[boxName] = SearchableBoxGeometry(
+            type='searchableBox',
+            purpose='refinementRegion', 
+            min=[box[0], box[2], box[4]],
+            max=[box[1], box[3], box[5]],
+            refineMax=refLevel
+        )
         return meshSettings
 
     # to calculate nearest wall thickness for a target yPlus value
     @staticmethod
     def calc_y(nu=1e-6, rho=1000., L=1.0, u=1.0, target_yPlus=200):
-        # rho = fluid_properties['rho']
-        # nu = fluid_properties['nu']
+        # rho = fluid_properties.rho
+        # nu = fluid_properties.nu
         Re = u*L/nu
         Cf = 0.0592*Re**(-1./5.)
         tau = 0.5*rho*Cf*u**2.
@@ -419,36 +432,42 @@ class StlAnalysis:
         return domain_size, nx, ny, nz, refLevel, finalLayerThickness, nLayers
 
     @staticmethod
-    def set_layer_thickness(meshSettings, thickness=0.01):
-        meshSettings['addLayersControls']['finalLayerThickness'] = thickness
+    def set_layer_thickness(meshSettings: MeshSettings, thickness=0.01):
+        meshSettings.addLayersControls.finalLayerThickness = thickness
         minThickness = max(0.0001, thickness/100.)
-        meshSettings['addLayersControls']['minThickness'] = minThickness
+        meshSettings.addLayersControls.minThickness = minThickness
         return meshSettings
 
     @staticmethod
-    def set_min_vol(meshSettings, minVol=1e-15):
-        meshSettings['meshQualityControls']['minVol'] = 1e-15  # minVol/100.
+    def set_min_vol(meshSettings: MeshSettings, minVol=1e-15):
+        meshSettings.meshQualityControls.minVol = 1e-15  # minVol/100.
         return meshSettings
 
     # to set mesh settings for blockMeshDict and snappyHexMeshDict
     @staticmethod
-    def set_mesh_settings(meshSettings, domain_size, nx, ny, nz, refLevel, featureLevel=1, nLayers=None):
-        meshSettings['domain'] = {'minx': domain_size[0], 'maxx': domain_size[1], 'miny': domain_size[2],
-                                  'maxy': domain_size[3], 'minz': domain_size[4], 'maxz': domain_size[5], 'nx': nx, 'ny': ny, 'nz': nz}
-        # meshSettings['domain']['nx'] = nx
-        # meshSettings['domain']['ny'] = ny
-        # meshSettings['domain']['nz'] = nz
-
+    def set_mesh_settings(meshSettings: MeshSettings, domain_size, nx, ny, nz, refLevel, featureLevel=1, nLayers=None):
+        meshSettings.domain = Domain(
+            minx=domain_size[0],
+            maxx=domain_size[1], 
+            miny=domain_size[2],
+            maxy=domain_size[3],
+            minz=domain_size[4],
+            maxz=domain_size[5],
+            nx=nx,
+            ny=ny,
+            nz=nz
+        )
+        
         refMin = max(1, refLevel)
         refMax = max(2, refLevel)
-        for geometry in meshSettings['geometry']:
-            if geometry['type'] == 'triSurfaceMesh':
-                geometry['refineMin'] = refMin
-                geometry['refineMax'] = refMax
-                # geometry['featureEdges'] = 'true'
-                geometry['featureLevel'] = featureLevel
+        for geometry in meshSettings.geometry.values():
+            if isinstance(geometry, TriSurfaceMeshGeometry):
+                geometry.refineMin = refMin
+                geometry.refineMax = refMax
+                # geometry.featureEdges = 'true'
+                geometry.featureLevel = featureLevel
                 if nLayers is not None:
-                    geometry['nLayers'] = nLayers
+                    geometry.nLayers = nLayers
         return meshSettings
 
     @staticmethod
@@ -474,14 +493,12 @@ class StlAnalysis:
         return center_of_mass, insidePoint, outsidePoint
 
     @staticmethod
-    def set_mesh_location(meshSettings, stl_file_path, internalFlow=False):
+    def set_mesh_location(meshSettings: MeshSettings, stl_file_path, internalFlow=False):
         center_of_mass, insidePoint, outsidePoint = StlAnalysis.analyze_stl(stl_file_path)
         if internalFlow:
-            meshSettings['castellatedMeshControls']['locationInMesh'] = [
-                insidePoint[0], insidePoint[1], insidePoint[2]]
+            meshSettings.castellatedMeshControls.locationInMesh = (insidePoint[0], insidePoint[1], insidePoint[2])
         else:
-            meshSettings['castellatedMeshControls']['locationInMesh'] = [
-                outsidePoint[0], outsidePoint[1], outsidePoint[2]]
+            meshSettings.castellatedMeshControls.locationInMesh = (outsidePoint[0], outsidePoint[1], outsidePoint[2])
         return meshSettings
 
     @staticmethod 
